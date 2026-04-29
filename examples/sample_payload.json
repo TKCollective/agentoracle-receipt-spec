@@ -1,0 +1,57 @@
+{
+  "receipt_version": "0.1",
+  "evaluation_id": "ao_eval_01j5x7r3k8m2q9wnxd6tb4hgyp",
+  "issued_at": "2026-04-29T20:24:00Z",
+  "issuer": "https://agentoracle.co",
+  "subject": {
+    "type": "verification.factual_claim",
+    "claim_text": "The Eiffel Tower is located in Paris, France.",
+    "claim_hash": "sha256-27dfce3b87229e59f268c64d50e954a6d7b640bd75557ed0185b622284d0ec1b"
+  },
+  "evidence": {
+    "sources_consulted": 4,
+    "sources_concurring": 4,
+    "snippets": [
+      {
+        "url": "https://en.wikipedia.org/wiki/Eiffel_Tower",
+        "supports": true,
+        "retrieval_score": 0.91
+      },
+      {
+        "url": "https://www.britannica.com/topic/Eiffel-Tower-Paris-France",
+        "supports": true,
+        "retrieval_score": 0.87
+      },
+      {
+        "url": "https://www.toureiffel.paris/en",
+        "supports": true,
+        "retrieval_score": 0.94
+      },
+      {
+        "url": "https://whc.unesco.org/en/list/600/",
+        "supports": true,
+        "retrieval_score": 0.79
+      }
+    ],
+    "corpus_snapshot": "2026-Q1",
+    "valid_until": "2026-07-29T20:24:00Z"
+  },
+  "confidence": {
+    "score": 0.97,
+    "method": "fused_majority_vote",
+    "scope": "general_factual_claims_en",
+    "calibration_anchor": {
+      "dataset": "FEVER-1.0-paper_dev-200",
+      "metric": "label_accuracy_oracle_evidence",
+      "score": 0.939,
+      "run_id": "cal_2026_04_15_fever_dev200",
+      "provisional": true,
+      "provisional_reason": "eval_harness_not_yet_public"
+    },
+    "valid_until": "2026-05-29T20:24:00Z"
+  },
+  "signature_meta": {
+    "valid_until": "2026-07-29T20:24:00Z",
+    "jwks_url": "https://agentoracle.co/.well-known/jwks.json"
+  }
+}

@@ -4,6 +4,20 @@
 > Posted in response to a [Coinbase Developer Discord #x402 thread](https://discord.gg/cdp) on Apr 29, 2026 about pre-action verification as a sibling family to environment-state attestations.
 > Comments / PRs / forks welcome.
 
+> ⚠️ **Benchmark numbers are provisional — not yet third-party reproducible.**
+> The cited FEVER metrics in this document come from two different evaluation settings that are not directly comparable:
+> - **93.9% label accuracy** is measured on FEVER 1.0 dev with **oracle evidence supplied** (gold evidence fed to the label classifier).
+> - **78.4% FEVER score** is measured on FEVER 1.0 dev with **our retrieval pipeline end-to-end** (our retriever + our label).
+>
+> Conflating them in a single sentence is our error and will be corrected. In addition, FEVER 1.0 is a public 2018 benchmark — parametric-knowledge contamination on a modern LLM is a live risk that has not yet been controlled for.
+>
+> Until the eval harness is public and reproducible by a third party, treat these numbers as **provisional**. Planned before any external citation:
+> - Publish docker-wrapped, seeded eval harness
+> - Report recall@5 and recall@10 on dev alongside headline scores
+> - Run contamination-controlled eval on a newer held-out benchmark (AVeriTeC 2024) and publish side-by-side
+>
+> See [Discord #x402 thread, Apr 29, 2026](https://discord.gg/cdp) for the original critique from @beenz that prompted this disclosure.
+
 This document specifies a **cryptographically signed receipt format** for output from `POST https://agentoracle.co/evaluate` — AgentOracle's pre-action factual claim verification endpoint.
 
 The receipt is designed to be:
