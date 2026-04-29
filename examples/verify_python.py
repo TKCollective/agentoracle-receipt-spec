@@ -24,7 +24,20 @@ from __future__ import annotations
 import base64
 import json
 import sys
+import warnings
 from pathlib import Path
+
+# joserfc emits an advisory SecurityWarning about RFC 9864 and the "EdDSA"
+# algorithm identifier. EdDSA remains supported in RFC 7518 / RFC 8037; the
+# advisory is about a newer identifier ("Ed25519") that is not yet widely
+# deployed in JOSE libraries. Migration is on our roadmap. We silence the
+# warning here for example-output clarity; it does not affect correctness.
+warnings.filterwarnings("ignore", category=UserWarning, module="joserfc")
+try:
+    from joserfc._rfc7515.registry import SecurityWarning as _JoseSecurityWarning
+    warnings.filterwarnings("ignore", category=_JoseSecurityWarning)
+except Exception:
+    pass
 
 import requests
 from joserfc import jws as joserfc_jws
