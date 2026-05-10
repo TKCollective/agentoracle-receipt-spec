@@ -1,4 +1,4 @@
-# AgentOracle Verification Receipt Format — Draft v0.1
+# AgentOracle Verification Receipt Format — Draft v0.2 (in progress)
 
 > **Status:** EARLY DRAFT for public discussion. Not yet implemented.
 > Posted in response to a [Coinbase Developer Discord #x402 thread](https://discord.gg/cdp) on Apr 29, 2026 about pre-action verification as a sibling family to environment-state attestations.
@@ -275,7 +275,232 @@ A user-issued mandate declaring a `verification.factual_claim_state` constraint 
 
 ---
 
-## 7. Open Questions
+## 7. Canonicalization (Normative)
+
+> **Status:** New in v0.2. Closes BLOCKER #1 from v0.1 review.
+
+All cryptographic signatures over a receipt's claim set MUST be computed over the **canonical byte representation** of the JWS payload (Section 3.2), not over the producer-emitted serialization. This section specifies exactly which canonicalization rules apply, why, and how implementers and verifiers MUST handle them.
+
+### 7.1 Why canonicalization is required
+
+The JSON Web Signature container ([RFC 7515](https://datatracker.ietf.org/doc/html/rfc7515)) signs whatever bytes the producer emits. JSON itself permits semantically-equivalent but byte-different representations of the same logical value: key order, whitespace, Unicode escape forms, number representation (e.g. `0.94` vs `9.4e-1`), and trailing zeros all vary across JSON serializers.
+
+Without a canonicalization step, a receipt that is byte-different but semantically identical (e.g. re-pretty-printed, key-reordered by a proxy, or round-tripped through a JSON library that emits keys alphabetically) will fail signature verification even though the payload's meaning has not changed. This is a known interoperability hazard in JWS-based receipt formats and has historically broken downstream verifiers in W3C VC, OIDC userinfo, and HTTP message signatures.
+
+v0.1 did not specify canonicalization. **v0.2 makes it normative.**
+
+### 7.2 Canonicalization rules (MUST)
+
+Producers MUST canonicalize the JWS Payload (Section 3.2) per [RFC 8785 — JSON Canonicalization Scheme (JCS)](https://datatracker.ietf.org/doc/html/rfc8785) before signing. Specifically:
+
+1. **Object keys** MUST appear in lexicographic UTF-16 code unit order at every level of nesting. (JCS §3.2.3, computed per RFC 8785 Appendix B.)
+2. **Numbers** MUST be serialized per [ECMAScript 2015 §7.1.12.1 (`Number.prototype.toString`)](https://tc39.es/ecma262/2015/#sec-tostring-applied-to-the-number-type), which is the algorithm RFC 8785 incorporates by reference. For example, `0.94` is canonical; `0.940` and `9.4e-1` are not.
+3. **Strings** MUST use minimum-form Unicode escapes per RFC 8785 §3.2.2.2: ASCII printable characters appear literally; ASCII control characters and the four mandatory escapes (`\"`, `\\`, `\b`, `\f`, `\n`, `\r`, `\t`) use their short escape form; all other characters appear literally as UTF-8.
+4. **Whitespace** MUST be eliminated entirely. The canonical form is a single line with no insignificant whitespace.
+5. **Insignificant zero, negative zero, NaN, and infinity** — the canonical form for any zero value (including `-0`) is the seven-bit ASCII character `0` (0x30). `NaN`, `Infinity`, and `-Infinity` are NOT permitted in receipt payloads. Producers MUST reject such values at construction time; verifiers MUST reject receipts that contain them.
+6. **Arrays** preserve emission order (JCS does not sort array elements). Receipt producers MUST preserve the semantic order of array fields such as `evidence.sources` and `claims[]`.
+
+### 7.3 What gets canonicalized
+
+The canonicalization applies to **the JWS Payload only** — the JSON object containing the protected claims in Section 3.2. The JWS Protected Header (Section 3.1) is base64url-encoded separately and uses standard JWS rules, not JCS.
+
+The signing input, per [RFC 7515 §5.1 step 5](https://datatracker.ietf.org/doc/html/rfc7515#section-5.1), becomes:
+
+```
+BASE64URL(UTF8(JWS Protected Header))
+  || '.' ||
+BASE64URL(JCS(JWS Payload))
+```
+
+Where `JCS(...)` is the canonicalized byte sequence per RFC 8785, and `BASE64URL(...)` is unpadded base64url per [RFC 4648 §5](https://datatracker.ietf.org/doc/html/rfc4648#section-5).
+
+### 7.4 Verifier behavior (MUST)
+
+Receipt verifiers MUST NOT trust the bytes a receipt arrives with directly. The verification algorithm is:
+
+1. Split the compact JWS at the `.` separator into `header_b64`, `payload_b64`, `signature_b64`.
+2. Base64url-decode `payload_b64` to recover the original payload bytes.
+3. Parse the recovered bytes as JSON.
+4. Re-canonicalize the parsed object using JCS rules (Section 7.2).
+5. Verify that the re-canonicalized bytes are byte-identical to the bytes from step 2.
+6. If step 5 passes, perform JWS signature verification per RFC 7515 §5.2 using the re-canonicalized bytes.
+7. If step 5 fails, the receipt MUST be rejected with reason `"non-canonical payload"`. This rejection is independent of and prior to signature validation.
+
+The purpose of step 5 is to ensure that downstream caching layers, JSON reformatters, or buggy proxies cannot strip a receipt's canonical form silently while preserving signature validity — a class of bug that has caused production incidents in OIDC userinfo deployments.
+
+### 7.5 Reference implementations
+
+Producers and verifiers SHOULD use one of the following well-maintained JCS implementations rather than hand-rolling:
+
+- **Node.js / TypeScript:** [`canonicalize` (npm)](https://www.npmjs.com/package/canonicalize). MIT licensed. Maintained by the [openidf/jcs working group](https://github.com/cyberphone).
+- **Python:** [`jcs` (PyPI)](https://pypi.org/project/jcs/). MIT licensed.
+- **Go:** [`gowebpki/jcs`](https://github.com/gowebpki/jcs). Apache 2.0.
+- **Rust:** [`serde_jcs`](https://crates.io/crates/serde_jcs). Apache 2.0.
+
+All four pass the [official RFC 8785 test suite](https://github.com/cyberphone/json-canonicalization/tree/master/testdata).
+
+### 7.6 Worked example
+
+Given a logical payload:
+
+```json
+{
+  "iss": "https://agentoracle.co",
+  "sub": "did:web:agentoracle.co:agents:a8b3",
+  "iat": 1762400000,
+  "ao_claim": {
+    "confidence": 0.94,
+    "text": "Bitcoin is currently trading at $67,432"
+  }
+}
+```
+
+The canonical form (single line, no whitespace, keys sorted at every depth) is:
+
+```
+{"ao_claim":{"confidence":0.94,"text":"Bitcoin is currently trading at $67,432"},"iat":1762400000,"iss":"https://agentoracle.co","sub":"did:web:agentoracle.co:agents:a8b3"}
+```
+
+This is the byte sequence that gets base64url-encoded as the JWS payload and that the signature is computed over. Both producer and verifier MUST arrive at this exact byte sequence regardless of intermediate JSON library behavior.
+
+### 7.7 Migration from v0.1
+
+v0.1 receipts (issued before this section is implemented) used producer-default JSON serialization without JCS. Verifiers SHOULD support a transitional mode that:
+
+- For receipts with `protected.alg == "EdDSA"` and `protected.kid` matching a `kid` issued before the cutover date (announced in CHANGELOG.md), accept the receipt's payload bytes as-issued without canonicalization re-check.
+- For receipts issued on or after the cutover date, enforce Section 7.4 strictly.
+
+The cutover date will be announced at least 30 days in advance and recorded in the `transitional_modes` block of the JWKS metadata (Section 8.5).
+
+---
+
+## 8. Key Rotation Policy (Normative)
+
+> **Status:** New in v0.2. Closes BLOCKER #2 from v0.1 review.
+
+Receipt signing keys MUST rotate on a regular cadence. This section specifies the rotation policy and how verifiers reconcile receipts signed with rotated keys.
+
+### 8.1 Rotation cadence (MUST)
+
+Producers MUST rotate their primary signing key at least every **90 days**. Producers SHOULD rotate more frequently if any of the following occur:
+
+- The private key material is suspected of compromise.
+- A key custody event (HSM migration, deployment infrastructure change, personnel turnover with key access).
+- A cryptographic vulnerability is disclosed against the signing algorithm (currently EdDSA over Curve25519).
+
+For scheduled rotations, producers MUST publish the new key in the JWKS at least **7 days before** activating it for signing.
+
+### 8.2 Overlap window (MUST)
+
+When a key rotates, the predecessor key MUST remain published in the JWKS for at least **90 days** after the rotation. During this overlap window:
+
+- The new key signs all new receipts.
+- The old key signs no new receipts.
+- Verifiers MUST accept receipts signed by either key, provided the receipt's `iat` (issued-at) timestamp falls within the corresponding key's validity window.
+
+The rationale for a 90-day overlap matches the maximum receipt freshness window for the calibration axis (Section 5.2). Receipts older than the overlap window are eligible for the stale-signature handling specified in Section 5.1, not the rotated-key handling here.
+
+### 8.3 `kid` format and uniqueness (MUST)
+
+Each key MUST have a `kid` (key ID) that is globally unique within the issuer's JWKS and that follows this format:
+
+```
+ao-receipt-{YYYY}-{MM}-{algorithm}-{8-hex}
+```
+
+Where:
+- `YYYY-MM` is the year and month of key generation (not activation).
+- `algorithm` is the JOSE algorithm identifier in lowercase (`ed25519` for `EdDSA` over Curve25519).
+- `8-hex` is the leading 8 hex characters of the SHA-256 hash of the public key material in raw byte form, providing both uniqueness and a tamper-evident binding between `kid` and key.
+
+Example: `ao-receipt-2026-04-ed25519-f2753b7c`
+
+Verifiers MUST treat the `kid` as an opaque identifier for JWKS lookup. They MUST NOT parse the date components of the `kid` for trust decisions — dates are operational metadata, not security boundaries.
+
+### 8.4 JWKS metadata extensions
+
+In addition to the standard JWKS fields ([RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517)), each key entry MUST include the following AgentOracle-specific metadata fields:
+
+```json
+{
+  "kty": "OKP",
+  "crv": "Ed25519",
+  "x": "<base64url public key>",
+  "kid": "ao-receipt-2026-04-ed25519-f2753b7c",
+  "alg": "EdDSA",
+  "use": "sig",
+  "agentoracle:activated_at": "2026-04-15T00:00:00Z",
+  "agentoracle:deactivated_at": null,
+  "agentoracle:expires_at": "2026-10-15T00:00:00Z"
+}
+```
+
+Where:
+- `activated_at` is the UTC timestamp at which this key began signing new receipts.
+- `deactivated_at` is `null` while the key is the active signing key; it is set to a UTC timestamp when a successor key takes over signing duty. After `deactivated_at` is set, the key remains in the JWKS for the 90-day overlap window.
+- `expires_at` is `activated_at + 180 days` (90-day signing + 90-day overlap). After `expires_at`, the key MAY be removed from the JWKS. Receipts referencing a `kid` no longer in the JWKS MUST be rejected with reason `"key not found in JWKS"`.
+
+The `agentoracle:` namespace prefix is used to avoid collision with any future IANA-registered JWK parameters. If this metadata is later standardized through IANA, the prefix will be dropped in the corresponding version of this spec.
+
+### 8.5 `transitional_modes` block
+
+The JWKS document MUST include a top-level `transitional_modes` block that lists currently-active transition policies, including the v0.1 → v0.2 canonicalization cutover (Section 7.7):
+
+```json
+{
+  "keys": [ ... ],
+  "transitional_modes": {
+    "canonicalization": {
+      "v0_1_v0_2_cutover": "2026-07-01T00:00:00Z",
+      "v0_1_grandfathered_kids": ["ao-receipt-2026-04-ed25519-f2753b7c"]
+    }
+  }
+}
+```
+
+Verifiers SHOULD consult `transitional_modes` to determine whether legacy receipts are still acceptable per the migration policies in Sections 7.7 and 5.1.
+
+### 8.6 `kid` resolution algorithm (MUST)
+
+Given a receipt with JWS Protected Header `kid = K`, verifiers MUST resolve `K` to a verification key using exactly this algorithm:
+
+1. Fetch the JWKS from the issuer's `iss + /.well-known/jwks.json` URL.
+2. Validate the JWKS document against [RFC 7517 §5](https://datatracker.ietf.org/doc/html/rfc7517#section-5).
+3. Search the `keys` array for an entry where `kid == K`. If no entry is found, reject with reason `"key not found in JWKS"`.
+4. If the matched entry's `agentoracle:expires_at` is in the past relative to the verifier's current time, reject with reason `"key expired"`.
+5. If the receipt's `iat` claim is before the matched entry's `agentoracle:activated_at`, reject with reason `"receipt issued before key activation"`.
+6. If the matched entry's `agentoracle:deactivated_at` is non-null AND the receipt's `iat` is after `deactivated_at`, reject with reason `"key was rotated before receipt issuance"`.
+7. Use the matched entry's public key material to verify the JWS signature per RFC 7515 §5.2.
+
+Verifiers MUST NOT skip steps 4-6 even if step 7 would succeed. The timestamp checks are independent security boundaries.
+
+### 8.7 Emergency rotation
+
+If a key is compromised or suspected compromised, producers MUST publish an emergency rotation that:
+
+1. Sets the compromised key's `agentoracle:deactivated_at` to the time of suspected compromise (not the time of detection).
+2. Adds a new key with `agentoracle:activated_at` equal to the moment of publication.
+3. Sets the compromised key's `agentoracle:expires_at` to `agentoracle:deactivated_at + 24 hours` (NOT the standard 90-day overlap).
+4. Publishes an entry in `transitional_modes.compromised_keys[]` listing the compromised `kid` and the suspected compromise window.
+
+Receipts signed by the compromised key within the suspected compromise window MAY be retroactively rejected by verifiers consulting the `compromised_keys` list. Receipts signed before the suspected compromise window remain valid, since the key material was sound at signing time.
+
+### 8.8 Worked example: scheduled rotation
+
+| Time (UTC) | Action | Active signing kid | JWKS contents |
+|---|---|---|---|
+| 2026-04-15T00:00Z | v0.1 launch | `ao-receipt-2026-04-ed25519-f2753b7c` | [f27…] |
+| 2026-07-01T00:00Z | New kid published 7d before activation | `ao-receipt-2026-04-ed25519-f2753b7c` | [f27…, 9d8…] |
+| 2026-07-08T00:00Z | Rotation: 9d8 takes over | `ao-receipt-2026-07-ed25519-9d8a4e1f` | [f27… (deactivated_at set), 9d8…] |
+| 2026-10-06T00:00Z | f27 expires (90d overlap) | `ao-receipt-2026-07-ed25519-9d8a4e1f` | [9d8…] |
+
+### 8.9 Migration from v0.1 single-key model
+
+v0.1 used a single fixed `kid` (`ao-receipt-2026-04-ed25519-f2753b7c`) with no rotation policy. The first scheduled rotation under v0.2 SHALL be implemented within 30 days of v0.2 spec finalization. The legacy v0.1 `kid` will be carried forward as the first-generation key under the new rotation policy, with `agentoracle:activated_at` backfilled to the original key generation date.
+
+---
+
+## 9. Open Questions
 
 The following items are intentionally underspecified pending discussion:
 
@@ -287,7 +512,7 @@ The following items are intentionally underspecified pending discussion:
 
 ---
 
-## 8. Status, Contribution, and Discussion
+## 10. Status, Contribution, and Discussion
 
 This is a **DRAFT**. Nothing here is implemented yet. The point of publishing this draft is to invite collaboration before code lands.
 
