@@ -500,19 +500,256 @@ v0.1 used a single fixed `kid` (`ao-receipt-2026-04-ed25519-f2753b7c`) with no r
 
 ---
 
-## 9. Open Questions
+## 9. Replay Protection (Normative)
+
+> **Status:** New in v0.2. Closes BLOCKER #3 from v0.1 review.
+
+A cryptographically-signed receipt is meaningless if a malicious consumer can present the same receipt repeatedly to bypass a downstream policy that requires fresh verification. This section specifies how verifiers detect and reject replayed receipts, and how producers cooperate to make replay detection deterministic.
+
+### 9.1 Why replay protection is required
+
+Receipts are bearer artifacts — anyone who possesses a valid receipt can present it to a downstream verifier. Without replay protection, an agent could re-present a single "act" receipt to repeatedly bypass policy checks long after the original underlying claim has staled. This is structurally analogous to OAuth bearer-token replay and is mitigated using the same primitives: per-receipt nonces, an anchored issuance window, and verifier-side seen-nonce tracking.
+
+v0.1 did not specify replay protection. **v0.2 makes it normative.**
+
+### 9.2 Receipt-side fields (MUST)
+
+The JWS Payload (Section 3.2) MUST include the following additional namespaced claims:
+
+```json
+{
+  "ao_nonce": "01926b48-7a3c-7000-8000-1f5e6c7d8a90",
+  "ao_chain": {
+    "prev": "sha256:c4e1a82b...",
+    "seq": 47829
+  },
+  "ao_anchor": {
+    "settle_tx": "0x296c8d905621310c67c335ff47a8391af58149df6f1511c348de4290472b817a",
+    "settle_chain": "eip155:8453",
+    "settle_log_index": 2
+  }
+}
+```
+
+| Claim | Required | Notes |
+|---|---|---|
+| `ao_nonce` | yes | [UUIDv7](https://datatracker.ietf.org/doc/html/rfc9562#section-5.7) — a 128-bit identifier that is unique per receipt and embeds the issuance timestamp in its leading bits. Producers MUST NOT reuse a nonce. Verifiers use this as the primary anti-replay key. |
+| `ao_chain.prev` | yes (after first receipt) | The SHA-256 hash (lowercase hex, `sha256:`-prefixed) of the canonical JCS bytes of the immediately preceding receipt issued by the same `kid`. The first receipt issued by a given `kid` SHALL set `prev` to the special sentinel `sha256:0000000000000000000000000000000000000000000000000000000000000000`. |
+| `ao_chain.seq` | yes | Monotonically increasing 64-bit unsigned integer, scoped to the issuing `kid`. The first receipt issued by a `kid` MUST have `seq: 0`. Each subsequent receipt MUST have `seq` equal to the predecessor's `seq + 1`. |
+| `ao_anchor.settle_tx` | optional, see §9.5 | When the receipt is generated in the same request that triggered an x402 settle, this field MUST be populated with the on-chain transaction hash. Provides an independent secondary anti-replay key tied to chain finality. |
+| `ao_anchor.settle_chain` | optional, see §9.5 | [CAIP-2](https://chainagnostic.org/CAIPs/caip-2) chain identifier matching the settle network. |
+| `ao_anchor.settle_log_index` | optional, see §9.5 | Log index of the USDC Transfer event within the settle transaction. Disambiguates multi-settle transactions. |
+
+### 9.3 Verifier behavior (MUST)
+
+Receipt verifiers MUST maintain a **seen-nonce cache** with the following properties:
+
+1. **Default retention window:** at least 7 days (matches the longest practical inter-receipt observation gap for human-audit workflows). Verifiers MAY extend this for audit-grade consumers.
+2. **Storage form:** any structure that supports O(1) membership testing — a Redis SET, a SQLite UNIQUE INDEX, a probabilistic Bloom filter sized for the verifier's traffic, or an in-process LRU. Implementation choice is verifier-side.
+3. **Lookup key:** the tuple `(iss, kid, ao_nonce)`. The issuer + kid scoping prevents accidental collision between different issuers' nonce spaces.
+
+The verification algorithm extends Section 8.6 (`kid` resolution) with the following additional steps performed AFTER signature verification succeeds:
+
+1. Compute the lookup key `(receipt.iss, receipt.protected.kid, receipt.payload.ao_nonce)`.
+2. If the lookup key is already present in the seen-nonce cache, reject the receipt with reason `"replay detected: nonce previously seen"`.
+3. If `ao_anchor.settle_tx` is present, query the corresponding chain for transaction inclusion. If the settle transaction has not been mined on `ao_anchor.settle_chain`, reject with reason `"settle anchor not finalized"`. Verifiers MAY skip this step for receipts older than the seen-nonce retention window.
+4. If `ao_anchor.settle_tx` is present, verify that `ao_anchor.settle_log_index` points to a USDC `Transfer` event in that transaction and that the event's `to` field matches the producer's known `payTo` address (derivable from `iss + /.well-known/x402`). If not, reject with reason `"settle anchor mismatch"`.
+5. If `ao_chain.prev` does not equal the SHA-256 hash of the immediately preceding receipt's JCS bytes (when known to the verifier — e.g. when the verifier has previously cached that hash), reject with reason `"chain hash mismatch"`. Verifiers that have not seen the predecessor MUST NOT reject on this ground — chain validation is opportunistic, not mandatory.
+6. If all checks pass, insert the lookup key into the seen-nonce cache before returning success. This MUST happen atomically with the success determination to prevent races between concurrent verifications of the same receipt.
+
+### 9.4 Producer behavior (MUST)
+
+Producers MUST:
+
+1. Generate `ao_nonce` using a cryptographically-secure UUIDv7 generator that derives the timestamp prefix from a monotonic source. The leading 48 bits MUST encode the receipt's issuance time per RFC 9562 §5.7.
+2. Maintain a per-`kid` counter for `ao_chain.seq` that persists across producer restarts. Counter loss (e.g. catastrophic state loss) is a key-compromise event under §8.7 and MUST trigger emergency rotation.
+3. Persist the JCS-canonicalized bytes of every issued receipt long enough to compute `ao_chain.prev` for the next receipt under the same `kid`. The retention requirement is the producer's signing key's full lifetime including overlap window (180 days under default v0.2 cadence).
+4. NEVER issue two receipts with the same `(kid, seq)` tuple. If a producer instance crashes mid-signing, the recovery procedure MUST advance `seq` past the highest pre-crash value before issuing further receipts.
+
+### 9.5 When the settle anchor is required
+
+The `ao_anchor` block is REQUIRED on any receipt issued in response to a paid `/evaluate` or `/research` call (i.e. when the receipt's existence was triggered by an on-chain x402 settle). The anchor is OPTIONAL for receipts issued in response to free-tier `/preview` calls.
+
+Verifiers MAY enforce a stricter policy — e.g. an audit-grade consumer MAY reject any receipt that does not carry an `ao_anchor`, regardless of the producer's policy. Consumer policy enforcement is unrestricted by this spec.
+
+### 9.6 Interaction with §5 freshness axes
+
+Replay protection is **orthogonal** to the three freshness axes specified in Section 5. A receipt may be fresh on all three axes (signature, calibration, evidence) and still be a replay; conversely, a stale receipt that is presented for the first time is not a replay.
+
+Verifier policy SHOULD evaluate replay protection BEFORE freshness axes — a confirmed replay is a security event and is logged differently from a stale-but-genuine receipt.
+
+### 9.7 Worked example: producer-side counter
+
+```
+Kid f27 has issued 3 receipts so far:
+  receipt 1: seq=0, nonce=01926b48-..., prev=sha256:000...
+  receipt 2: seq=1, nonce=01926b49-..., prev=sha256:<hash of receipt 1 JCS>
+  receipt 3: seq=2, nonce=01926b4a-..., prev=sha256:<hash of receipt 2 JCS>
+
+Kid f27 crashes and recovers from persistent storage at seq=2.
+  receipt 4: seq=3, nonce=01926c11-..., prev=sha256:<hash of receipt 3 JCS>
+
+Kid f27 issues receipt 5 concurrently from two replicas:
+  ERROR. Producer MUST serialize seq increments — replicas SHALL share a
+  durable counter (e.g. Redis INCR, Postgres SEQUENCE, etcd transactional
+  counter) and SHALL NOT issue independently from in-process state.
+```
+
+### 9.8 Migration from v0.1
+
+v0.1 receipts did not carry `ao_nonce`, `ao_chain`, or `ao_anchor`. Verifiers SHOULD support a transitional mode that:
+
+- For receipts whose `kid` is listed in `transitional_modes.canonicalization.v0_1_grandfathered_kids` (Section 8.5), skip §9.3 entirely (no replay protection enforced for legacy receipts).
+- For all other receipts, enforce §9.3 strictly.
+
+Producers SHOULD NOT reissue v0.1 receipts as v0.2 — the original signing time is gone and the chain history cannot be reconstructed. Legacy receipts remain valid under the freshness rules of v0.1 only.
+
+---
+
+## 10. Claim Semantics (Normative)
+
+> **Status:** New in v0.2. Closes BLOCKER #4 from v0.1 review. Resolves the calibration / provisional / historical confusion flagged by Decixa partner review on 2026-04-29.
+
+The `ao_confidence` field is a probability in `[0,1]` — but consumers need to reason programmatically about *what kind of confidence* this number represents. v0.1 conflated calibrated, provisional, and historical confidence into a single scalar. v0.2 separates them.
+
+### 10.1 The three confidence states
+
+The JWS Payload MUST include a `confidence.level` field with exactly one of the following values:
+
+| Value | Meaning | When set |
+|---|---|---|
+| `"calibrated"` | The confidence score is grounded against a benchmark anchor (Section 3.2.3) that was active at the time of signing AND whose calibration `valid_until` is still in the future. | Standard production receipts. |
+| `"provisional"` | The confidence score is computed but the calibration anchor is either expired, missing, or has been flagged as compromised. The score is informative but not policy-grade. | When `ao_calibration.valid_until ≤ iat`, or when the anchor benchmark itself has been retracted. |
+| `"historical"` | The receipt was issued under an older anchor that has since been superseded by a calibration anchor refresh. The score reflects the calibration in effect at issuance time and remains valid for audit purposes, but the consumer is on notice that the current calibration would likely score differently. | When a newer calibration anchor has been published AFTER the receipt's `iat` but the receipt itself has not staled out under §5. |
+
+### 10.2 Programmatic rules (MUST)
+
+Consumers MUST evaluate `confidence.level` programmatically as follows:
+
+```
+FOR_POLICY_ENFORCEMENT(receipt) ==
+  confidence.level == "calibrated" AND
+  ao_confidence >= consumer_policy.threshold
+
+FOR_AUDIT_REPLAY(receipt) ==
+  confidence.level IN ["calibrated", "historical"] AND
+  SIGNATURE_FRESH(receipt)
+
+FOR_INFORMATIONAL_DISPLAY(receipt) ==
+  TRUE
+  (i.e. all three levels are surfaceable, but provisional and historical
+   MUST be visually flagged when shown to a human)
+```
+
+In other words:
+
+- **Policy enforcement (gate an agent action):** require `calibrated`. Reject `provisional` and `historical`.
+- **Audit replay (retrospective review):** accept `calibrated` and `historical`. Reject `provisional`.
+- **Informational display:** all three are acceptable, but UIs MUST visually flag non-`calibrated` levels.
+
+Consumers MAY tighten these rules (e.g. an audit-grade reviewer may require `calibrated` only) but MUST NOT loosen them.
+
+### 10.3 Producer behavior (MUST)
+
+Producers MUST set `confidence.level` deterministically at receipt construction time, evaluated in this order:
+
+1. If the active calibration anchor (referenced by `ao_calibration.anchor_dataset`) is on the producer's published `compromised_anchors[]` list (Section 10.5), set `level = "provisional"`.
+2. Else, if `ao_calibration.valid_until ≤ iat`, set `level = "provisional"`.
+3. Else, if a newer calibration anchor has been published with `anchor_as_of > current_anchor.anchor_as_of` AND the producer is in a transition window during which both anchors are active, set `level = "calibrated"` (the producer's choice of anchor for THIS receipt determines the level — newer-anchor receipts are also `calibrated`, just under a different anchor).
+4. Else, set `level = "calibrated"`.
+
+Note: `"historical"` is NEVER set by the producer at issuance time. It is set by the **verifier** retrospectively when it observes that a newer anchor has been published after the receipt's `iat`. The verifier rewrite is in-memory only — it MUST NOT modify the original signed payload.
+
+### 10.4 Verifier behavior (MUST)
+
+Verifiers MUST evaluate `confidence.level` as follows:
+
+1. Read `confidence.level` from the receipt payload.
+2. If `confidence.level == "calibrated"`, check whether the receipt's referenced calibration anchor (`ao_calibration.anchor_dataset` + `anchor_as_of`) is still the active anchor for `iss`. The active anchor is determined by querying `iss + /.well-known/agentoracle/calibration-anchor.json` (see Section 10.5).
+3. If the receipt's anchor matches the current active anchor, the level remains `"calibrated"`.
+4. If the receipt's anchor is NOT the current active anchor but is listed in the issuer's `calibration_anchor.history[]`, the verifier MUST surface this receipt as effective level `"historical"`. The on-the-wire bytes remain `"calibrated"` — only the verifier's report SHALL rewrite.
+5. If the receipt's anchor is in the issuer's `calibration_anchor.compromised[]`, surface as `"provisional"` regardless of what the bytes say.
+
+Verifiers MUST NOT modify the on-the-wire receipt bytes when surfacing a historical or provisional re-classification. The rewrite is presentational only.
+
+### 10.5 Calibration anchor metadata endpoint
+
+Issuers MUST publish a calibration anchor metadata document at:
+
+```
+https://<iss>/.well-known/agentoracle/calibration-anchor.json
+```
+
+With the following structure:
+
+```json
+{
+  "active": {
+    "anchor_dataset": "AVeriTeC-2024-dev-500",
+    "anchor_seed": 42,
+    "anchor_as_of": "2026-05-13",
+    "valid_until": "2026-11-13T00:00:00Z"
+  },
+  "history": [
+    {
+      "anchor_dataset": "FEVER-1.0-paper_dev-200",
+      "anchor_seed": 42,
+      "anchor_as_of": "2026-04-21",
+      "superseded_at": "2026-05-13T00:00:00Z",
+      "superseded_by": "AVeriTeC-2024-dev-500"
+    }
+  ],
+  "compromised": []
+}
+```
+
+The document MUST be served with `Cache-Control: max-age=3600` or shorter. Verifiers SHOULD refresh their cached copy at least every 6 hours.
+
+### 10.6 Worked example: confidence level transitions
+
+```
+2026-04-21: Producer publishes anchor FEVER-1.0-paper_dev-200.
+  Receipt R1 issued with anchor_dataset=FEVER-1.0-...; level=calibrated.
+
+2026-05-13: Producer publishes new anchor AVeriTeC-2024-dev-500.
+  history[] now contains FEVER-1.0; active is AVeriTeC.
+  Receipt R1's on-the-wire bytes still say level=calibrated.
+  When a verifier sees R1 today, it reports R1's effective level as
+    "historical" because R1's anchor is in history[] not active.
+  R1 remains valid for audit replay but cannot gate new agent actions.
+
+2026-05-20: Producer flags FEVER-1.0 as compromised (e.g. evaluation set
+  contamination discovered).
+  compromised[] now contains FEVER-1.0.
+  When a verifier sees R1 now, it reports R1's effective level as
+    "provisional". R1 is no longer valid for audit replay either.
+```
+
+### 10.7 Open question: monotonic anchor versioning
+
+The semantics above assume calibration anchors form a single linear history per issuer. A future revision MAY accommodate parallel anchors (e.g. FEVER for general-domain claims AND a domain-specific medical anchor running concurrently). v0.2 leaves this in Section 11 (Open Questions).
+
+### 10.8 Migration from v0.1
+
+v0.1 receipts did not include `confidence.level`. Verifiers SHOULD treat all v0.1 receipts as effective level `"historical"` once v0.2 ships in production, since the absence of explicit calibration evidence in v0.1 makes them ineligible for policy enforcement under v0.2 rules.
+
+---
+
+## 11. Open Questions
 
 The following items are intentionally underspecified pending discussion:
 
 1. **COSE encoding** — should the spec include a normative COSE binding alongside JWS for embedded-device consumers?
 2. **Multi-issuer receipts** — when verification spans multiple oracles (e.g. AgentOracle + a different content authenticity verifier), should the receipt support multi-signature attestation, or should consumers verify N separate single-signer receipts?
-3. **Calibration anchor versioning** — when the underlying benchmark dataset itself revises (FEVER 1.0 → 2.0), how do we name and reference both versions without breaking existing consumers?
+3. **Calibration anchor versioning** — when the underlying benchmark dataset itself revises (FEVER 1.0 → 2.0), how do we name and reference both versions without breaking existing consumers? Section 10.7 surfaces a related case: parallel anchors for different domains.
 4. **Evidence URI authentication** — proposed: caller's bearer presentation matches `sub`. Alternative: signed evidence URI that delegates access for a TTL.
 5. **Privacy** — when `ao_claim.redacted == true`, the `text` field is omitted and only `hash` is present. Does this provide adequate privacy guarantees for content-team consumers verifying brand-sensitive claims pre-publication?
+6. **Replay protection across issuers** — Section 9 scopes the seen-nonce cache to `(iss, kid, ao_nonce)`. If two different issuers happen to mint colliding nonces (theoretically impossible under UUIDv7 randomness, but worth noting), the cache correctly treats them as distinct. Should the spec mandate a stronger global-uniqueness rule, or is per-issuer scoping sufficient?
+7. **Settle anchor for non-EVM chains** — Section 9.2's `ao_anchor.settle_chain` uses CAIP-2; Solana and Stellar settles are within scope. The corresponding `settle_log_index` semantics need clarifying for non-EVM chains.
 
 ---
 
-## 10. Status, Contribution, and Discussion
+## 12. Status, Contribution, and Discussion
 
 This is a **DRAFT**. Nothing here is implemented yet. The point of publishing this draft is to invite collaboration before code lands.
 

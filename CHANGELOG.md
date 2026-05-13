@@ -11,21 +11,20 @@ Closes the 7 BLOCKER gaps identified in the v0.1 review.
 
 - **Section 7 — Canonicalization.** All signatures MUST be computed over the RFC 8785 JCS-canonical byte representation of the JWS payload. Includes verifier re-canonicalization rule (independent of signature validation), worked example, reference-implementation pointers per language, and a v0.1 → v0.2 grandfathering policy. *Closes BLOCKER #1.*
 - **Section 8 — Key Rotation Policy.** Mandatory 90-day rotation cadence with 90-day overlap window. Specifies `kid` format (`ao-receipt-{YYYY}-{MM}-{algorithm}-{8-hex}`), JWKS metadata extensions (`activated_at`, `deactivated_at`, `expires_at`), a 7-step `kid` resolution algorithm verifiers MUST follow exactly, emergency rotation procedure, and a `transitional_modes` JWKS block for cutover bookkeeping. *Closes BLOCKER #2.*
+- **Section 9 — Replay Protection.** Adds `ao_nonce` (UUIDv7), `ao_chain` (per-`kid` hash chain with `prev` + `seq`), and optional `ao_anchor` (settle-tx + CAIP-2 chain + log index) as MUST fields. Verifiers maintain a seen-nonce cache keyed on `(iss, kid, ao_nonce)` with 7-day default retention. Settle-anchored receipts MAY be additionally validated against on-chain finality. Producer recovery rules cover replica races and crash recovery. v0.1 grandfathering pulls the canonicalization cutover policy in by reference. *Closes BLOCKER #3.*
+- **Section 10 — Claim Semantics.** Resolves the calibration / provisional / historical confusion flagged by Decixa partner review on 2026-04-29. Adds `confidence.level: calibrated | provisional | historical` with strict programmatic semantics: `calibrated` only for policy enforcement, `calibrated` + `historical` for audit replay, all three surfaceable for informational display. Producers set the level deterministically at signing time; verifiers MAY surface a retrospective re-classification when newer / compromised anchors land, but MUST NOT modify the on-the-wire receipt bytes. Mandates a new metadata document at `/.well-known/agentoracle/calibration-anchor.json` for active / history / compromised anchor lookup. *Closes BLOCKER #4 and the calibration-provisional ambiguity from BLOCKER #5.*
 
 ### Renumbered
 
-- Section 7 (was "Open Questions") → **Section 9**
-- Section 8 (was "Status, Contribution, and Discussion") → **Section 10**
+- Section 7 (was "Open Questions") → **Section 11**
+- Section 8 (was "Status, Contribution, and Discussion") → **Section 12**
 
 ### Still to land in v0.2
 
-- Replay protection: nonce + audience semantics in the receipt envelope (BLOCKER #3)
-- Claim semantics: exactly which payload fields are signed vs. unsigned (BLOCKER #4)
-- `calibration.provisional` MUST/MAY rules (BLOCKER #5)
-- `kid` resolution edge cases (already partially covered by §8.6, but BLOCKER #6 specifies the full lookup-failure decision tree)
-- Receipt format versioning: how v0.2 → v1.0 migration is signaled and grandfathered (BLOCKER #7)
+- `kid` resolution edge cases beyond §8.6 (full lookup-failure decision tree) — BLOCKER #6
+- Receipt format versioning: how v0.2 → v1.0 migration is signaled and grandfathered — BLOCKER #7
 
-These five remaining blockers are scheduled for May 12–14 (in parallel with the AVeriTeC harness sprint).
+These two remaining blockers are scheduled for May 14–16 (in parallel with the AVeriTeC harness ship + Beenz intro).
 
 ### Why this slip is intentional
 
