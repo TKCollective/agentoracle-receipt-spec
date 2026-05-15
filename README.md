@@ -735,7 +735,288 @@ v0.1 receipts did not include `confidence.level`. Verifiers SHOULD treat all v0.
 
 ---
 
-## 11. Open Questions
+## 11. `kid` Resolution Edge Cases (Normative)
+
+> **Status:** New in v0.2. Closes BLOCKER #6 from v0.1 review.
+
+Section 8.6 specifies the happy-path `kid` resolution algorithm — fetch JWKS, locate the entry whose `kid` matches the receipt's protected header, verify the signature. This section specifies what verifiers MUST do when that lookup does not produce a clean single match. The decision tree below is intentionally exhaustive because silent lookup failures are the most common source of cross-implementation interop bugs in JWS ecosystems.
+
+### 11.1 The seven failure modes
+
+The `kid` resolution algorithm can fail in exactly seven structurally distinct ways:
+
+| # | Failure mode | What the verifier sees |
+|---|---|---|
+| F1 | JWKS endpoint unreachable | Network error, DNS failure, TLS handshake error, HTTP 5xx |
+| F2 | JWKS endpoint reachable but returns non-JWKS content | HTTP 200 with HTML, JSON of wrong shape, empty body, etc. |
+| F3 | JWKS returns valid JSON but `keys[]` is empty | `{"keys": []}` |
+| F4 | JWKS returns keys but none have a matching `kid` | None of `keys[].kid` equals `receipt.protected.kid` |
+| F5 | Exactly one matching `kid` but its `agentoracle:` metadata indicates the key is deactivated, expired, or revoked | Match exists but `deactivated_at <= now` or `expires_at <= now` or key is in `revoked_keys[]` |
+| F6 | Multiple matching `kid` entries (duplicate `kid` in JWKS — SHOULD NEVER HAPPEN) | More than one entry in `keys[]` has the same `kid` |
+| F7 | Matching `kid` but the signature does not verify against its key material | Single clean match, but `verify(receipt, key)` returns false |
+
+Verifiers MUST handle all seven failure modes explicitly. Verifiers MUST NOT collapse them into a single "signature verification failed" outcome — the failure mode is itself diagnostic information that downstream consumers (and producers reviewing audit logs) need.
+
+### 11.2 Required verifier behavior per failure mode
+
+#### F1 (JWKS unreachable)
+
+Verifiers MUST:
+1. Retry the JWKS fetch with exponential backoff (initial 500ms, max 3 retries, max total elapsed 10s).
+2. If all retries fail AND the verifier has a cached JWKS from this `iss` within the cache freshness window (default 24h, configurable per §8.5), proceed with the cached JWKS and add `"jwks_source": "cached-fallback"` to the verifier's reason field.
+3. If all retries fail AND no cached JWKS is available, reject the receipt with reason `"jwks_unreachable: <error_summary>"`.
+
+**Rationale:** Issuer downtime is a different failure than issuer compromise. Cached-fallback acceptance with a 24h ceiling preserves liveness during issuer outages without indefinitely accepting receipts from a dead issuer.
+
+#### F2 (JWKS endpoint returns non-JWKS content)
+
+Verifiers MUST reject the receipt with reason `"jwks_invalid_response: content-type=<ct>, body-prefix=<first-200-bytes>"`.
+
+**Rationale:** F2 indicates either an issuer misconfiguration or a man-in-the-middle attack. Either way, the cached-fallback path from F1 MUST NOT apply — the issuer is actively serving wrong content, not unreachable. Fall through to F1's cache logic only if the verifier can prove (via TLS certificate validation) that the response came from the legitimate issuer.
+
+#### F3 (JWKS reachable, `keys[]` empty)
+
+Verifiers MUST reject the receipt with reason `"jwks_empty: issuer has no published keys"`.
+
+**Rationale:** An issuer publishing an empty JWKS has explicitly revoked all keys. This is a defined state, not an error — do not fall back to cache. Cached keys from a previous fetch are no longer valid the moment the issuer publishes an empty JWKS.
+
+#### F4 (no matching `kid`)
+
+Verifiers MUST:
+1. Re-fetch the JWKS one time, ignoring cache, in case the cached copy is stale and the producer has rotated.
+2. If the re-fetched JWKS still does not contain a matching `kid`, reject the receipt with reason `"kid_unknown: <kid> not in JWKS at <iss>/.well-known/jwks.json (rechecked at <timestamp>)"`.
+3. Verifiers MUST NOT proactively rotate the cache TTL down or up based on F4 outcomes — a single missing-kid event is not enough information to change cache policy.
+
+**Rationale:** F4 happens legitimately during the rotation overlap window when verifier cache is older than the receipt's signing key. The forced re-fetch covers that case. If the re-fetch still fails, the receipt is referencing a `kid` the issuer does not (or no longer does) acknowledge.
+
+#### F5 (matching `kid` but key is deactivated/expired/revoked)
+
+Verifiers MUST evaluate the receipt's `iat` against the key's lifecycle metadata:
+
+| Receipt `iat` relative to key metadata | Action |
+|---|---|
+| `iat` within `[activated_at, deactivated_at)` AND `iat + signature_age_max <= deactivated_at + overlap_window` | Accept with reason `"signed_during_active_window"` |
+| `iat` within `[deactivated_at, expires_at)` | Reject with reason `"signed_after_key_deactivated"` — signing AFTER deactivation is a protocol violation by the producer |
+| `iat` after `expires_at` | Reject with reason `"signed_after_key_expired"` |
+| Key listed in `revoked_keys[]` for any reason | Reject with reason `"key_revoked: <revocation_reason>"` regardless of `iat` |
+
+**Rationale:** Within the rotation overlap window, signatures from a soon-to-be-deactivated key are still valid for receipts whose freshness window does not extend beyond the overlap. Outside that window, the producer has signed something it should not have, and the receipt MUST be rejected even if the cryptography validates. Revocation is unconditional — a revoked key MUST NOT validate any receipt regardless of `iat`.
+
+#### F6 (duplicate `kid` in JWKS)
+
+Verifiers MUST reject the receipt with reason `"jwks_malformed: duplicate kid <kid> at <iss>/.well-known/jwks.json"` and SHOULD log this as a probable issuer-side bug.
+
+**Rationale:** Two keys sharing a `kid` is a JWKS schema violation. Picking one and proceeding would be non-deterministic across implementations and is therefore unsafe. The producer MUST resolve the duplicate before any receipts under that `kid` can validate.
+
+#### F7 (signature does not verify)
+
+Verifiers MUST reject the receipt with reason `"signature_invalid"`.
+
+Verifiers MUST NOT attempt fallback resolution against other keys in the JWKS — a signed receipt names exactly one signing key via its `kid`, and a signature failure under that key is final.
+
+**Rationale:** F7 is the classic cryptographic failure mode. Allowing a verifier to try other keys would defeat the purpose of `kid` as an explicit key selector and would create a verification oracle attack surface.
+
+### 11.3 Required producer behavior for F-mode minimization
+
+Producers MUST:
+
+1. Publish JWKS with HTTP `Cache-Control: max-age=3600` or shorter so verifiers can refresh promptly during rotation events.
+2. Ensure JWKS is served with `Content-Type: application/jwk-set+json` (canonical) or `application/json` (acceptable). Other content types put verifiers into F2.
+3. Never publish two keys with the same `kid`. Producers SHOULD validate their JWKS against the F6 condition before publishing each rotation.
+4. Maintain `revoked_keys[]` as an append-only list. Once a `kid` enters `revoked_keys[]`, the producer MUST NOT remove it from the list — the revocation is a permanent historical fact, not a transient state.
+5. Ensure that for any `kid` in active service, the corresponding JWKS entry contains complete lifecycle metadata: `activated_at`, `deactivated_at` (may be null if currently active), `expires_at`, and (if applicable) `revocation_reason`.
+
+### 11.4 Worked examples
+
+```
+Verifier sees receipt with kid=ao-receipt-2026-04-ed25519-f2753b7c.
+Verifier fetches https://agentoracle.co/.well-known/jwks.json, gets:
+  { "keys": [
+    { "kid": "ao-receipt-2026-04-ed25519-f2753b7c",
+      "agentoracle:activated_at": "2026-04-21T00:00:00Z",
+      "agentoracle:deactivated_at": "2026-07-21T00:00:00Z",
+      "agentoracle:expires_at": "2026-10-21T00:00:00Z",
+      ... },
+    { "kid": "ao-receipt-2026-07-ed25519-1f3e89b1",
+      "agentoracle:activated_at": "2026-07-21T00:00:00Z",
+      ... }
+  ]}
+
+Receipt iat = 2026-08-01T00:00:00Z. Receipt signature_age_max = 7 days.
+
+F5 evaluation:
+  - Matching kid found, but key is deactivated as of 2026-07-21
+  - iat (2026-08-01) is between deactivated_at (2026-07-21) and expires_at (2026-10-21)
+  - Per F5 second row: REJECT with reason "signed_after_key_deactivated"
+
+Producer bug confirmed: receipt was signed AFTER its key was deactivated.
+Verifier rejects, producer's audit log surfaces the bad signing event.
+```
+
+```
+Verifier sees receipt with kid=ao-receipt-2026-04-ed25519-f2753b7c.
+Verifier fetches JWKS, gets HTTP 500. Retry 1 also 500. Retry 2 succeeds.
+
+Result: succeed under F1 step 1 (retry recovery).
+```
+
+```
+Verifier sees receipt with kid=ao-receipt-2026-04-ed25519-f2753b7c.
+Verifier's cached JWKS from 6 hours ago does not contain that kid.
+F4 path: forced re-fetch, ignoring cache.
+Re-fetched JWKS does contain the kid (producer rotated 30 min ago).
+Verifier proceeds to F5/F7 evaluation.
+```
+
+### 11.5 Migration from v0.1
+
+v0.1 specified F1, F3, F4, and F7 but did not specify F2, F5, or F6. Implementations of v0.1 MAY have collapsed F2 into F1, F5 into F4 or F7, and F6 into F4. Verifiers upgrading to v0.2 MUST handle all seven failure modes explicitly. v0.1-grandfathered `kid` entries (per §8.5) MAY skip F5 lifecycle checks since v0.1 did not require lifecycle metadata on JWKS entries.
+
+---
+
+## 12. Receipt Format Versioning (Normative)
+
+> **Status:** New in v0.2. Closes BLOCKER #7 from v0.1 review.
+
+This section specifies how the AgentOracle Receipt Format evolves across versions, how producers signal the format version they emit, how verifiers signal the format versions they support, and how migration windows are coordinated across the ecosystem. The goal is to make every version transition explicit, observable, and recoverable.
+
+### 12.1 Version identifier
+
+Every receipt MUST include in its JWS Payload an `ao_version` claim:
+
+```json
+{
+  "ao_version": "0.2"
+}
+```
+
+- The value is a semver-like dotted string `MAJOR.MINOR` (no patch suffix).
+- MAJOR is incremented for breaking changes (incompatible wire format or normative-claim changes).
+- MINOR is incremented for additive changes (new optional claims, new optional headers, new normative-but-backwards-compatible verifier requirements).
+- The value is a STRING, not a number. `"0.10"` is the version that comes after `"0.9"`, not before `"0.2"`.
+
+Receipts emitted by v0.2-conforming producers MUST set `ao_version: "0.2"`. v0.1-emitted receipts that did not carry this field MUST be treated as `"0.1"` for compatibility purposes.
+
+### 12.2 Producer signaling: supported emit versions
+
+Producers MUST publish the version they currently emit at a well-known discovery endpoint:
+
+```
+https://<iss>/.well-known/agentoracle/version.json
+```
+
+With the following structure:
+
+```json
+{
+  "current_emit": "0.2",
+  "can_also_emit": ["0.1"],
+  "deprecates": {
+    "0.1": {
+      "deprecated_at": "2026-05-13T00:00:00Z",
+      "sunset_at": "2026-11-13T00:00:00Z",
+      "reason": "v0.1 lacks normative replay protection and canonicalization; v0.2 closes both gaps"
+    }
+  },
+  "will_accept": ["0.1", "0.2"],
+  "requires": ["0.2"]
+}
+```
+
+Field meanings:
+
+| Field | Meaning |
+|---|---|
+| `current_emit` | The version this producer emits BY DEFAULT on new receipts |
+| `can_also_emit` | Versions this producer is willing to emit on request (e.g. via an HTTP query parameter the consumer can negotiate). Empty array means the producer ONLY emits `current_emit`. |
+| `deprecates` | Per-version sunset schedule. Receipts emitted after `sunset_at` MUST use a non-deprecated version. |
+| `will_accept` | Versions this producer (acting as a verifier of receipts from OTHER producers) will accept |
+| `requires` | Versions a CONSUMER must support to interoperate with this producer at policy-grade quality |
+
+The document MUST be served with `Cache-Control: max-age=3600` or shorter.
+
+### 12.3 Consumer signaling: requested receipt version
+
+Consumers MAY request a specific receipt version by including an `X-AO-Receipt-Version` header on their request:
+
+```
+X-AO-Receipt-Version: 0.2
+```
+
+Producer behavior on receiving this header:
+
+1. If the requested version equals `current_emit` or is in `can_also_emit`, the producer MUST emit a receipt in the requested version.
+2. If the requested version is not supported, the producer MUST respond with HTTP `400` and a JSON body listing supported versions: `{"error": "unsupported_receipt_version", "supported": ["0.2"], "can_also_emit": ["0.1"]}`.
+3. If the header is absent, the producer MUST emit a receipt in `current_emit`.
+
+### 12.4 Verifier behavior across versions
+
+Verifiers MUST evaluate every receipt against the rules of the version the receipt claims (`ao_version`), not the rules of the verifier's preferred version. The verifier MAY surface receipts from older versions as effective `"historical"` per §10 if the rule-set divergence is material.
+
+For each version a verifier supports:
+
+1. The verifier MUST publish its supported version range in machine-readable form. Recommended location: `https://<verifier>/.well-known/agentoracle/verifier-support.json` with structure `{"supports": ["0.1", "0.2"], "prefers": "0.2"}`.
+2. The verifier MUST NOT silently downgrade verification logic. Specifically: a v0.2 verifier seeing a v0.1 receipt MUST apply v0.1 verification rules to that receipt, not v0.2 rules. The verifier MAY decline to verify the receipt at all (returning `"version_not_supported"`) but MUST NOT mix rule-sets.
+
+### 12.5 Minor version compatibility (additive evolution)
+
+A verifier conforming to version `MAJOR.X` MUST accept receipts from any version `MAJOR.Y` where `Y <= X`. Forward compatibility (a `MAJOR.X` verifier seeing a `MAJOR.X+1` receipt) is best-effort:
+
+1. The verifier MUST ignore any claims in the receipt payload whose names it does not recognize.
+2. The verifier MUST NOT reject the receipt solely on the basis of unknown claims.
+3. The verifier MAY surface a warning indicating that the receipt was produced by a newer version and some claims were ignored.
+
+This is the same forward-compatibility pattern as JOSE and PASETO.
+
+### 12.6 Major version transitions
+
+A major version increment (e.g. `0.x` → `1.0`) signals a wire-format break. Producers and verifiers cannot apply minor-version forward compatibility across major versions — a `1.x` verifier MUST NOT attempt to verify a `0.x` receipt under `1.x` rules.
+
+The migration protocol for a major version increment:
+
+1. The producer announces the new major version with a minimum 90-day `deprecated_at` → `sunset_at` window for the previous major. The window MUST be at least 90 days; producers SHOULD use 180 days when feasible.
+2. During the deprecation window, the producer MUST emit both versions on request: `current_emit` set to the new major, `can_also_emit` containing the previous major. Consumers explicitly request the previous major via `X-AO-Receipt-Version` if they cannot yet support the new major.
+3. At `sunset_at`, the producer removes the previous major from `can_also_emit` and stops emitting it. Receipts under the previous major remain valid for audit replay (subject to their original freshness rules), but no new receipts will be issued under it.
+4. Verifiers SHOULD update their `supports[]` to include the new major within the deprecation window. Verifiers that have not updated by `sunset_at` cannot validate new receipts from this producer.
+
+### 12.7 Version-specific freshness rules
+
+A verifier MUST evaluate the freshness axes (§5) using the rules current at the receipt's `ao_version`, not the rules current at the verifier's version. v0.2 freshness rules apply to receipts with `ao_version: "0.2"`; v0.1 freshness rules apply to receipts with `ao_version: "0.1"`.
+
+This is the same rule as §12.4 but called out explicitly because freshness evaluation is where most cross-version interop bugs land.
+
+### 12.8 Worked example: rolling forward to v0.2 from v0.1
+
+```
+2026-05-13: AgentOracle producer publishes:
+  /.well-known/agentoracle/version.json:
+    current_emit: "0.2"
+    can_also_emit: ["0.1"]
+    deprecates: { "0.1": { deprecated_at: "2026-05-13", sunset_at: "2026-11-13" }}
+    will_accept: ["0.1", "0.2"]
+    requires: ["0.2"]
+
+Consumer A is on v0.2 client — sends no version header, gets v0.2 receipts by default.
+Consumer B is on v0.1 client and has not migrated — sends X-AO-Receipt-Version: 0.1, gets v0.1 receipts.
+Consumer C is on v0.2 client but is verifying receipts from a different producer that is still v0.1 — verifies those receipts under v0.1 rules.
+
+2026-11-13 (180 days later): AgentOracle producer publishes:
+  /.well-known/agentoracle/version.json:
+    current_emit: "0.2"
+    can_also_emit: []
+    deprecates: { "0.1": { ..., "status": "sunset" }}
+
+Consumer B's v0.1 requests now receive HTTP 400 "unsupported_receipt_version" until they migrate.
+Receipts issued before 2026-11-13 under v0.1 remain valid for audit replay.
+```
+
+### 12.9 Migration from v0.1 (specific transition)
+
+v0.1 receipts will continue to validate for their full v0.1 freshness window (default 7 days for signature freshness) post-v0.2-launch. The sunset date for v0.1 emission is 2026-11-13 (180 days from v0.2 spec finalization). v0.1 grandfathering rules (§8.5, §9.8, §10.8) continue to apply through sunset.
+
+---
+
+## 13. Open Questions
 
 The following items are intentionally underspecified pending discussion:
 
@@ -749,7 +1030,7 @@ The following items are intentionally underspecified pending discussion:
 
 ---
 
-## 12. Status, Contribution, and Discussion
+## 14. Status, Contribution, and Discussion
 
 This is a **DRAFT**. Nothing here is implemented yet. The point of publishing this draft is to invite collaboration before code lands.
 
