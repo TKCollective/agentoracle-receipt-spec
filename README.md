@@ -1,3 +1,7 @@
+# AgentOracle Verification Receipt Format — Draft v0.3 (binary-halt gate)
+
+> **v0.3 draft in progress (May 29, 2026).** Collapses the four-band `recommendation` to a binary `act` / `halt` gate. See [ADR-001](adr/ADR-001-binary-halt-gate.md) for rationale. v0.2 remains the cited published draft until v0.3 is cut (target: 2026-06-05). Existing `/evaluate` integrators: no immediate action — back-compat shim ships alongside.
+
 # AgentOracle Verification Receipt Format — Draft v0.1
 
 > **Status:** EARLY DRAFT for public discussion. Not yet implemented.
@@ -40,6 +44,7 @@ Today AgentOracle's `/evaluate` returns:
     "overall_confidence": 0.87,
     "recommendation": "act",
     "recommendation_text": "Safe to act. Claim is well-supported by multiple sources.",
+    "_v0_3_note": "In v0.3 (per ADR-001), recommendation collapses to act|halt. confidence and verdict_raw remain in the receipt as signed metadata.",  
     "claims": [...]
   },
   "meta": { "endpoint": "/evaluate", "verification_method": "...", ... }
@@ -141,7 +146,9 @@ The receipt is a **JWS** ([RFC 7515](https://datatracker.ietf.org/doc/html/rfc75
 |---|---|---|
 | `ao_v` | yes | Receipt format version. This document = `v0.1`. |
 | `ao_claim` | yes | The verified claim — `text` OR `hash` (claim text is OPTIONAL when caller marks the input as PII-sensitive; the hash is then the binding object) |
-| `ao_verdict` | yes | One of `supported` / `refuted` / `unverifiable` |
+| `ao_verdict` | yes | One of `supported` / `refuted` / `unverifiable`. In v0.3 this is metadata; the gate is consumed via `recommendation`. |
+| `recommendation` | yes (v0.3) | `act` or `halt`. Binary fail-closed gate; see [ADR-001](adr/ADR-001-binary-halt-gate.md). |
+| `ao_gate_threshold` | yes (v0.3) | Float in `[0,1]`. The confidence floor used to compute `recommendation`. Default `0.70`. |
 | `ao_confidence` | yes | Float in `[0,1]` |
 | `ao_method` | yes | Self-describing method tag identifying the verification pipeline + calibration anchor |
 | `ao_calibration` | yes | Calibration evidence — see §3.2.3 |
