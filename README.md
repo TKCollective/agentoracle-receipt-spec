@@ -1,6 +1,11 @@
 # AgentOracle Verification Receipt Format — Draft v0.3 (binary-halt gate)
 
-> **v0.3 draft in progress (May 29, 2026).** Collapses the four-band `recommendation` to a binary `act` / `halt` gate. See [ADR-001](adr/ADR-001-binary-halt-gate.md) for rationale. v0.2 remains the cited published draft until v0.3 is cut (target: 2026-06-05). Existing `/evaluate` integrators: no immediate action — back-compat shim ships alongside.
+> **v0.3 draft in progress (May 30, 2026).** Two refinements to the gate semantics:
+>
+> 1. **[ADR-001](adr/ADR-001-binary-halt-gate.md)** — Binary `act` / `halt` gate (collapses the v0.2 four-band recommendation).
+> 2. **[ADR-002](adr/ADR-002-canonical-derived-version-binding.md)** — The signed receipt carries the *canonical recommendation*, the *derived gate*, and a *versioned mapping identifier* together. Verifiers recompute the gate locally from signed inputs; no trust in issuer runtime. First published mapping: [`v0.3.0-2026-05-30`](mappings/v0.3.0-2026-05-30.md).
+>
+> v0.2 remains the cited published draft until v0.3 is cut (target: 2026-06-05). Existing `/evaluate` integrators: no immediate action — back-compat shim ships alongside.
 
 # AgentOracle Verification Receipt Format — Draft v0.1
 
@@ -146,9 +151,30 @@ The receipt is a **JWS** ([RFC 7515](https://datatracker.ietf.org/doc/html/rfc75
 |---|---|---|
 | `ao_v` | yes | Receipt format version. This document = `v0.1`. |
 | `ao_claim` | yes | The verified claim — `text` OR `hash` (claim text is OPTIONAL when caller marks the input as PII-sensitive; the hash is then the binding object) |
-| `ao_verdict` | yes | One of `supported` / `refuted` / `unverifiable`. In v0.3 this is metadata; the gate is consumed via `recommendation`. |
-| `recommendation` | yes (v0.3) | `act` or `halt`. Binary fail-closed gate; see [ADR-001](adr/ADR-001-binary-halt-gate.md). |
-| `ao_gate_threshold` | yes (v0.3) | Float in `[0,1]`. The confidence floor used to compute `recommendation`. Default `0.70`. |
+| `v_verdict` | yes (v0.3) | One of `supported` / `refuted` / `unverifiable`. Signed primitive; provenance. |
+| `v_recommendation` | yes (v0.3) | Canonical input. One of `confident_supported`, `vulnerable_supported`, `weak_supported`, `refuted`, `unverifiable`, `error`. Signed. See [ADR-002](adr/ADR-002-canonical-derived-version-binding.md). |
+| `v_gate` | yes (v0.3) | Derived output. `act` or `halt`. Signed. Computed from `v_recommendation` under `v_gate_mapping`. |
+| `v_gate_mapping` | yes (v0.3) | Stable string ID of the published mapping document, e.g. `v0.3.0-2026-05-30`. Signed. See [mappings/](mappings/). |
+| `v_gate_threshold` | yes (v0.3) | Float in `[0,1]`. Confidence floor input to recommendation derivation. Default `0.70`. Signed. |
+| `v_adversarial_result` | yes (v0.3) | `resilient` / `vulnerable` / `not_checked`. Signed primitive. |
+
+### Receipt verification protocol (v0.3)
+
+```
+1. Verify JWS signature over the receipt JSON (RFC 7515).
+2. Resolve v_gate_mapping → fetch the named mapping document (cache by ID).
+3. Recompute candidate_recommendation from
+   (v_verdict, v_confidence, v_gate_threshold, v_adversarial_result)
+   using the rules in the mapping document.
+4. Confirm candidate_recommendation == v_recommendation.
+5. Recompute candidate_gate = mapping(v_recommendation).
+6. Confirm candidate_gate == v_gate.
+7. If all match → receipt is valid AND internally consistent under mapping.
+   Any mismatch → receipt is malformed; treat as halt.
+```
+
+Verifiers never trust the issuer runtime to have applied the mapping correctly. The signature binds inputs, outputs, and mapping ID together; the verifier recomputes locally.
+
 | `ao_confidence` | yes | Float in `[0,1]` |
 | `ao_method` | yes | Self-describing method tag identifying the verification pipeline + calibration anchor |
 | `ao_calibration` | yes | Calibration evidence — see §3.2.3 |
