@@ -1,0 +1,15 @@
+{
+  "receipt_version": "0.3.0",
+  "mapping_id": "v0.3.0-2026-05-30",
+  "issuer": "https://agentoracle.co",
+  "subject": {
+    "type": "verification.factual_claim",
+    "claim_text": "The Eiffel Tower is located in Paris, France.",
+    "claim_hash": "sha256-27dfce3b87229e59f268c64d50e954a6d7b640bd75557ed0185b622284d0ec1b"
+  },
+  "context": {
+    "action_ref": "urn:agentoracle:demo:claim-verify:0001",
+    "scope": "general_factual_claims_en",
+    "issued_at_planned": "2026-06-08T00:00:00Z"
+  }
+}

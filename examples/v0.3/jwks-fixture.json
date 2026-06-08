@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "crv": "Ed25519",
+      "x": "t3KoFHZcuSUYie-bwEs0_gSfDh_Jfm1u0SMvKWu9IaU",
+      "kty": "OKP",
+      "kid": "ao-fixture-2026-06-v03-ed25519",
+      "alg": "EdDSA",
+      "use": "sig"
+    }
+  ]
+}
