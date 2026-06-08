@@ -320,9 +320,24 @@ The following items are intentionally underspecified pending discussion:
 
 ---
 
-## 8. Status, Contribution, and Discussion
+## 8. Conforming Implementations
 
-This is a **DRAFT**. Nothing here is implemented yet. The point of publishing this draft is to invite collaboration before code lands.
+v0.3 conforming mappings (mapping ID + document hash + JWKS):
+
+| Mapping ID | Domain | Hash | Status |
+| --- | --- | --- | --- |
+| `v0.3.0-2026-05-30` | Factual claim verification (AgentOracle) | content-addressed in receipts via `v_gate_mapping_hash` | Reference implementation. Endpoint: `https://agentoracle.co/evaluate`. Verifier: [agentoracle-receipt-verify](https://github.com/TKCollective/agentoracle-receipt-verify). Fixtures: [`examples/v0.3/`](./examples/v0.3/). |
+| `agenttrust-v0.3-2026-06-07` | SKILL.md + MCP manifest threat scanning (AgentTrust) | `sha256-70f75200320cef0eed011197efe45c1ca063e8b98b002a623001e26adc496d29` | Second conforming implementation. Endpoints: `POST https://agenttrust.uk/v1/scan` and `/v1/scan/mcp`. JWKS: [agenttrust.uk/.well-known/jwks.json](https://agenttrust.uk/.well-known/jwks.json). Mapping doc: [poteshniy/agenttrust](https://raw.githubusercontent.com/poteshniy/agenttrust/main/docs/mapping-v0.3.md). |
+
+Mappings are immutable after publication; future rule changes ship under a new mapping ID. The receipt-spec defines the envelope, canonical primitives, and verification protocol; each implementer defines its own mapping table from domain-specific primitives to `v_recommendation` / `v_gate`.
+
+If you ship a conforming mapping, open a PR adding a row to this table.
+
+---
+
+## 9. Status, Contribution, and Discussion
+
+This is a **DRAFT**. The receipt envelope and verification protocol are stable as of v0.3. Domain mappings are independently versioned (see §8).
 
 - Issues / discussion: [GitHub issues on this repo](https://github.com/TKCollective/agentoracle-receipt-spec/issues)
 - Discord: [#x402 on Coinbase Developer Discord](https://discord.gg/cdp)
