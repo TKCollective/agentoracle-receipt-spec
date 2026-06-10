@@ -1,0 +1,45 @@
+{
+  "spec": "argentum-core/composition-ref-v1.0 + key_source (per argentum-core#10)",
+  "fields": {
+    "action_ref": "ao_action_halt_v03_demo_01",
+    "delegation_ref": "ao_delegation_v03_demo_01",
+    "revocation_ref": "ao_revocation_v03_demo_01",
+    "metadata": {
+      "domain_verdicts": [
+        {
+          "claim_id": "sha256-27dfce3b87229e59f268c64d50e954a6d7b640bd75557ed0185b622284d0ec1b",
+          "verdict": "vulnerable_supported",
+          "gate": "halt",
+          "standard": "v0.3.0-2026-05-30",
+          "standard_hash": "sha256-02d91ee4e9f92efbb6a7218d13f726f400bf48bed79d7e4050e4ee8cd98bc0c1",
+          "reviewer": {
+            "jws_signer_kid": "ao-fixture-2026-06-v03-ed25519",
+            "jwks_uri": "https://agentoracle.co/.well-known/jwks.json",
+            "receipt_typ": "application/vnd.agentoracle.receipt+jws"
+          },
+          "receipt_jws": {
+            "signature": "VSIpHnYa3tCmC9lNLjlAjanVfe7ix7oepR0MhWjhzqUrCyM4mqHy03ountugbd0_Hr9hezlD68rtuYGVMvVtCQ",
+            "payload": "eyJyZWNlaXB0X3ZlcnNpb24iOiIwLjMuMCIsIm1hcHBpbmdfaWQiOiJ2MC4zLjAtMjAyNi0wNS0zMCIsImlzc3VlciI6Imh0dHBzOi8vYWdlbnRvcmFjbGUuY28iLCJzdWJqZWN0Ijp7InR5cGUiOiJ2ZXJpZmljYXRpb24uZmFjdHVhbF9jbGFpbSIsImNsYWltX3RleHQiOiJUaGUgRWlmZmVsIFRvd2VyIGlzIGxvY2F0ZWQgaW4gUGFyaXMsIEZyYW5jZS4iLCJjbGFpbV9oYXNoIjoic2hhMjU2LTI3ZGZjZTNiODcyMjllNTlmMjY4YzY0ZDUwZTk1NGE2ZDdiNjQwYmQ3NTU1N2VkMDE4NWI2MjIyODRkMGVjMWIifSwiY29udGV4dCI6eyJhY3Rpb25fcmVmIjoidXJuOmFnZW50b3JhY2xlOmRlbW86Y2xhaW0tdmVyaWZ5OjAwMDEiLCJzY29wZSI6ImdlbmVyYWxfZmFjdHVhbF9jbGFpbXNfZW4iLCJpc3N1ZWRfYXRfcGxhbm5lZCI6IjIwMjYtMDYtMDhUMDA6MDA6MDBaIn0sImV2YWx1YXRpb25faWQiOiJhb19ldmFsX2ZpeHR1cmVfdjAzX2hhbHRfMDEiLCJpc3N1ZWRfYXQiOiIyMDI2LTA2LTA4VDAwOjAwOjAxWiIsInZfdmVyZGljdCI6InN1cHBvcnRlZCIsInZfY29uZmlkZW5jZSI6MC45MSwidl9nYXRlX3RocmVzaG9sZCI6MC43LCJ2X2FkdmVyc2FyaWFsX3Jlc3VsdCI6InZ1bG5lcmFibGUiLCJ2X3NvdXJjZXNfdXNlZCI6WyJzb25hciIsImFkdmVyc2FyaWFsIl0sInZfcmVjb21tZW5kYXRpb24iOiJ2dWxuZXJhYmxlX3N1cHBvcnRlZCIsInZfZ2F0ZSI6ImhhbHQiLCJ2X2dhdGVfbWFwcGluZyI6InYwLjMuMC0yMDI2LTA1LTMwIiwidl9nYXRlX21hcHBpbmdfaGFzaCI6InNoYTI1Ni0wMmQ5MWVlNGU5ZjkyZWZiYjZhNzIxOGQxM2Y3MjZmNDAwYmY0OGJlZDc5ZDdlNDA1MGU0ZWU4Y2Q5OGJjMGMxIiwiZXZpZGVuY2UiOnsic291cmNlc19jb25zdWx0ZWQiOjQsInNvdXJjZXNfY29uY3VycmluZyI6NCwiY29ycHVzX3NuYXBzaG90IjoiMjAyNi1RMiJ9LCJzaWduYXR1cmVfbWV0YSI6eyJqd2tzX3VybCI6Imh0dHBzOi8vYWdlbnRvcmFjbGUuY28vLndlbGwta25vd24vandrcy5qc29uIiwidmFsaWRfdW50aWwiOiIyMDI2LTA5LTA4VDAwOjAwOjAwWiJ9fQ",
+            "protected": "eyJhbGciOiJFZERTQSIsImtpZCI6ImFvLWZpeHR1cmUtMjAyNi0wNi12MDMtZWQyNTUxOSIsInR5cCI6ImFwcGxpY2F0aW9uL3ZuZC5hZ2VudG9yYWNsZS5yZWNlaXB0K2p3cyIsImN0eSI6ImFwcGxpY2F0aW9uL2pzb24ifQ"
+          }
+        }
+      ]
+    },
+    "key_source": "inline",
+    "authority_verified_at_ms": 1717804800000,
+    "revocation_check_at_ms": 1717804800500,
+    "ts_ms": 1717804801000
+  },
+  "computed": {
+    "composition_ref": "0eb7a736df8bc85c",
+    "hash_algorithm": "SHA-256 (first 16 hex chars)",
+    "raw_format": "action:{action_ref}|delegation:{delegation_ref}|revocation:{revocation_ref}|meta:{json(metadata)}|key_src:{key_source}|auth_ts:{ms}|revoke_ts:{ms}|ts:{ms}",
+    "canonical_metadata_json_preview": "{\"domain_verdicts\":[{\"claim_id\":\"sha256-27dfce3b87229e59f268c64d50e954a6d7b640bd75557ed0185b622284d0ec1b\",\"gate\":\"halt\",\"receipt_jws\":{\"payload\":\"eyJyZWNlaXB0X3ZlcnNpb24iOiIwLjMuMCIsIm1hcHBpbmdfaWQiOi..."
+  },
+  "cross_references": {
+    "ietf_draft": "https://datatracker.ietf.org/doc/draft-krausz-verification-state/",
+    "ao_receipt_spec": "https://github.com/TKCollective/agentoracle-receipt-spec/tree/v0.3-binary-halt",
+    "argentum_core_field_def": "https://github.com/giskard09/argentum-core/issues/10",
+    "aar_thread": "https://github.com/microsoft/autogen/issues/7353"
+  }
+}
