@@ -16,17 +16,14 @@ The goal is a **two-implementer hash-match interop test**: AgentOracle produces 
 
 | Fixture | composition_ref | v_gate |
 | --- | --- | --- |
-| `composition-ref-allow.json` | `8dc585dea3364832` | `act` |
-| `composition-ref-halt.json` | `0eb7a736df8bc85c` | `halt` |
+| `composition-ref-allow.json` | `72acbe4e38fcabf8` | `act` |
+| `composition-ref-halt.json` | `d9b73c7dd21e2c2a` | `halt` |
 
-These were computed using the exact format from [argentum-core#10](https://github.com/giskard09/argentum-core/issues/10):
+**Hash format:** SHA-256 over **JCS canonical JSON (RFC 8785)** of the full composition_ref object, first 16 hex characters. This is the authoritative format per [@Liuyanfeng1234's clarification](https://github.com/microsoft/autogen/issues/7353) in the AAR thread on June 10. The pipe-separated `raw` string described in [argentum-core#10](https://github.com/giskard09/argentum-core/issues/10) predates the JCS migration and is no longer authoritative; `CompositionRefBuilder` serializes via JCS and hashes the canonical bytes.
 
-```
-raw = "action:{action_ref}|delegation:{delegation_ref}|revocation:{revocation_ref}|meta:{json(metadata)}|key_src:{key_source}|auth_ts:{ms}|revoke_ts:{ms}|ts:{ms}"
-composition_ref = SHA-256(raw).hexdigest()[:16]
-```
+JCS implementation used: [`canonicalize`](https://www.npmjs.com/package/canonicalize) (RFC 8785 reference).
 
-with these stable inputs (identical across both fixtures except for `metadata.domain_verdicts[0].verdict` / `gate` / `receipt_jws`):
+### Stable inputs (identical across both fixtures except for the three verdict-distinguishing fields)
 
 | Field | Value |
 | --- | --- |
@@ -35,11 +32,13 @@ with these stable inputs (identical across both fixtures except for `metadata.do
 | `key_source` | `inline` |
 | `authority_verified_at_ms` | `1717804800000` (2026-06-08T00:00:00Z) |
 | `revocation_check_at_ms` | `1717804800500` |
-| `ts_ms` | `1717804801000` |
-| `action_ref` (allow) | `ao_action_allow_v03_demo_01` |
-| `action_ref` (halt) | `ao_action_halt_v03_demo_01` |
+| `scope` | `verification:factual_claim:pre_publish` |
+| `version` | `composition-ref-v1.0` |
+| `composition_built_at_ms` | `1717804801000` |
+| `action_ref` (allow fixture) | `ao_action_allow_v03_demo_01` |
+| `action_ref` (halt fixture) | `ao_action_halt_v03_demo_01` |
 
-> **Canonical metadata JSON convention:** keys sorted, no whitespace, UTF-8. This matches the convention typically applied to the `json(metadata)` slot in the pipe-separated `raw` string. If `CompositionRefBuilder` uses a different canonicalization for the metadata embedding, please flag it — that's the first place a hash mismatch will surface.
+The two fixtures differ only in: `action_ref` and `metadata.domain_verdicts[0].{verdict, gate, receipt_jws}`. Same canonical claim, same standard, same standard_hash, same reviewer key — flipping only `v_adversarial_result` upstream in the AgentOracle receipt drives the entire downstream divergence.
 
 ## Field mapping — AgentOracle v0.3 ↔ AAR domain_verdicts
 
@@ -86,22 +85,31 @@ node build-aar-fixtures.mjs
 Expected output:
 
 ```
-AAR fixtures written:
-  composition-ref-allow.json  composition_ref = 8dc585dea3364832  (v_gate=act)
-  composition-ref-halt.json   composition_ref = 0eb7a736df8bc85c  (v_gate=halt)
+AAR fixtures written (JCS mode):
+  composition-ref-allow.json  composition_ref = 72acbe4e38fcabf8  (v_gate=act)
+  composition-ref-halt.json   composition_ref = d9b73c7dd21e2c2a  (v_gate=halt)
+
+Hash algorithm: SHA-256 over JCS canonical JSON (RFC 8785), first 16 hex chars
+JCS implementation: canonicalize@npm (reference)
 ```
 
 If your `CompositionRefBuilder` produces the same two 16-char hashes from the same input fields, the integration is hash-stable across two independent implementations — which is what makes the field set worth standardizing.
 
-## Open items for cross-reference review
+## Open items resolved (in-thread, June 10)
 
-A small number of field-level questions worth flagging back to argentum-core#10 before locking the integration:
+@Liuyanfeng1234 confirmed three open items during the AAR thread exchange:
 
-1. **Metadata canonicalization convention.** Is `json(metadata)` in the `raw` string assumed to be RFC 8785 JCS, or sorted-keys/no-whitespace (the convention used here)? Both are deterministic; they differ on Unicode escape behavior for non-ASCII strings.
-2. **Empty optional fields.** When `delegation_ref` or `revocation_ref` are absent, is the slot omitted from `raw` or set to an empty string (`delegation:|`)? This fixture sets demo values so it doesn't hit this case, but a real auditor will.
-3. **Multiple verdicts.** `domain_verdicts` is an array; for the multi-standard case (e.g. EU AI Act Article 12 + FDA SaMD evaluated against the same claim), does the array order need to be canonical? Sort by `standard`? By insertion order? Affects hash stability.
+1. **Canonicalization.** JCS canonical JSON (RFC 8785) over the full field set, not the pipe-separated raw string. Implementation here uses the `canonicalize` npm package as the reference JCS implementation.
+2. **Empty optional fields.** Omitted entirely from the JCS object (consistent with RFC 8785).
+3. **`domain_verdicts` array ordering.** Insertion-ordered; the issuer determines the order. First verdict carries the primary decision. Consistent with the mapping-verdict pair ordering in `draft-krausz-verification-state`.
 
-These are the only edge cases that surfaced while building the fixture; everything else maps cleanly.
+## Remaining items pending CompositionRefBuilder confirmation
+
+Three fields where this fixture made best-guess canonical values and is awaiting confirmation:
+
+- **`version` value.** Used `composition-ref-v1.0`. If CompositionRefBuilder expects a different canonical form, the resulting hashes will diverge and we converge on a value.
+- **`scope` value.** Used `verification:factual_claim:pre_publish` per giskard09's per-action-intent definition. If a different canonical form is expected (e.g. URN), flag and converge.
+- **Composition timestamp field name.** Used `composition_built_at_ms` for the composition-time timestamp (the `ts` element from the legacy pipe format). If CompositionRefBuilder names this field differently in the JCS object, that's a guaranteed hash mismatch source.
 
 ## Cross-references
 

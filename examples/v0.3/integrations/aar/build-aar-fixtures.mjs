@@ -1,24 +1,27 @@
-// build-aar-fixtures.mjs
+// build-aar-fixtures.mjs (v2 — JCS migration)
+//
 // Builds composition_ref envelopes that wrap AgentOracle v0.3 JWS receipts
 // inside metadata.domain_verdicts, per the integration shape outlined by
 // @Liuyanfeng1234 in microsoft/autogen#7353.
 //
-// Output:
-//   - composition-ref-allow.json   (composition_ref carrying AgentOracle ACT receipt)
-//   - composition-ref-halt.json    (composition_ref carrying AgentOracle HALT receipt)
+// HASH FORMAT (per @Liuyanfeng1234's clarification, June 10):
+// The authoritative composition_ref hash is SHA-256 over JCS canonical JSON
+// (RFC 8785) of the full field set, taking the first 16 hex chars. The
+// argentum-core#10 issue text describes a pipe-separated raw string format
+// that PREDATES the JCS migration done in response to giskard09's review;
+// it is no longer authoritative. CompositionRefBuilder now serializes via
+// JCS and hashes the canonical bytes.
 //
-// composition_ref hash format (per giskard09/argentum-core#10):
-//   raw = "action:{action_ref}|delegation:{delegation_ref}|revocation:{revocation_ref}|meta:{json(metadata)}|key_src:{key_source}|auth_ts:{ms}|revoke_ts:{ms}|ts:{ms}"
-//   composition_ref = SHA-256(raw).hexdigest()[:16]
-//
-// We compute the composition_ref on our side and write it into each output
-// file so giskard09/Liuyanfeng1234 can run the same inputs through their
-// CompositionRefBuilder and confirm the hashes match.
+// Field set included in the JCS object (per Liuyanfeng's confirmation):
+//   action_ref, delegation_ref, revocation_ref, key_source,
+//   authority_verified_at_ms, revocation_check_at_ms, scope, version, metadata,
+//   composition_built_at_ms
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import canonicalize from 'canonicalize';
 
 const OUT = dirname(fileURLToPath(import.meta.url));
 const V03 = join(OUT, '..', '..');
@@ -26,32 +29,33 @@ const V03 = join(OUT, '..', '..');
 // Stable timestamps so the fixture is reproducible.
 const AUTH_TS_MS = 1717804800000;       // 2026-06-08T00:00:00Z (matches receipt issued_at)
 const REVOKE_TS_MS = 1717804800500;     // 500ms after authority verified
-const COMPOSITION_TS_MS = 1717804801000; // composition built 1s after authority verified
+const BUILD_TS_MS = 1717804801000;      // composition built 1s after authority verified
 
-const MAPPING_ID = 'v0.3.0-2026-05-30';
-const MAPPING_HASH = 'sha256-02d91ee4e9f92efbb6a7218d13f726f400bf48bed79d7e4050e4ee8cd98bc0c1';
 const REVIEWER_KID = 'ao-fixture-2026-06-v03-ed25519';
 const JWKS_URI = 'https://agentoracle.co/.well-known/jwks.json';
 
+// composition_ref schema version + per-action intent scope.
+// `scope` and `version` were called out by @Liuyanfeng1234 as part of the
+// fixed binding field set. The values here are the issuer's best guess; if
+// CompositionRefBuilder expects different canonical values for either,
+// flagging early so we converge on names rather than debug a hash mismatch.
+const COMPOSITION_REF_VERSION = 'composition-ref-v1.0';
+const ACTION_SCOPE = 'verification:factual_claim:pre_publish';
+
 // ---------- Helpers ----------------------------------------------------------
 
-// Canonical JSON: sorted keys, no whitespace, UTF-8.
-// We use this for the embedded metadata, matching the convention in
-// argentum-core#10's "json(metadata)" embedding inside the pipe-separated raw.
-function canonicalJSON(obj) {
-  if (obj === null || typeof obj !== 'object') {
-    return JSON.stringify(obj);
-  }
-  if (Array.isArray(obj)) {
-    return '[' + obj.map(canonicalJSON).join(',') + ']';
-  }
-  const keys = Object.keys(obj).sort();
-  return '{' + keys.map(k => JSON.stringify(k) + ':' + canonicalJSON(obj[k])).join(',') + '}';
+// JCS RFC 8785 canonicalization. Using the `canonicalize` npm package, which is
+// the reference implementation. This removes any ambiguity about whether the
+// embedded metadata canonicalization or the whole-object canonicalization
+// matches RFC 8785.
+function jcs(obj) {
+  return canonicalize(obj);
 }
 
-function compositionRefHash({ action_ref, delegation_ref, revocation_ref, metadata, key_source, auth_ts_ms, revoke_ts_ms, ts_ms }) {
-  const raw = `action:${action_ref}|delegation:${delegation_ref}|revocation:${revocation_ref}|meta:${canonicalJSON(metadata)}|key_src:${key_source}|auth_ts:${auth_ts_ms}|revoke_ts:${revoke_ts_ms}|ts:${ts_ms}`;
-  return createHash('sha256').update(raw, 'utf8').digest('hex').slice(0, 16);
+function compositionRefHash(fields) {
+  // SHA-256 over JCS canonical bytes, first 16 hex chars.
+  const canonical = jcs(fields);
+  return createHash('sha256').update(canonical, 'utf8').digest('hex').slice(0, 16);
 }
 
 // ---------- Inputs -----------------------------------------------------------
@@ -62,8 +66,6 @@ const canonicalInput = JSON.parse(
 const allowJws = JSON.parse(readFileSync(join(V03, 'receipt-allow.jws'), 'utf8'));
 const haltJws = JSON.parse(readFileSync(join(V03, 'receipt-halt.jws'), 'utf8'));
 
-// Decode each JWS payload to extract the verdict fields. The JWS in the
-// fixture is in Flattened JSON form; the payload is base64url-encoded.
 function decodePayload(jws) {
   const pad = '='.repeat((4 - (jws.payload.length % 4)) % 4);
   const b64 = jws.payload.replace(/-/g, '+').replace(/_/g, '/') + pad;
@@ -78,9 +80,7 @@ const haltPayload = decodePayload(haltJws);
 function buildOne({ kind, jws, payload }) {
   // Map AgentOracle receipt fields into the domain_verdicts entry shape
   // sketched in microsoft/autogen#7353 by @Liuyanfeng1234:
-  //   { claim_id, verdict, standard, reviewer }
-  // We add standard_hash and the raw signed JWS so an auditor holding only
-  // this composition_ref can independently verify the AgentOracle receipt.
+  //   { claim_id, verdict, standard, reviewer } + standard_hash + gate + receipt_jws
   const domainVerdict = {
     claim_id: canonicalInput.subject.claim_hash,
     verdict: payload.v_recommendation,
@@ -95,49 +95,45 @@ function buildOne({ kind, jws, payload }) {
     receipt_jws: jws,
   };
 
-  // composition_ref fields (per argentum-core#10)
-  const action_ref = `ao_action_${kind}_v03_demo_01`;
-  const delegation_ref = 'ao_delegation_v03_demo_01';
-  const revocation_ref = 'ao_revocation_v03_demo_01';
-  const key_source = 'inline'; // jwks-fixture.json is bundled with the example
-  const metadata = {
-    domain_verdicts: [domainVerdict],
+  // Full composition_ref field set, per Liuyanfeng's confirmation. Optional
+  // fields not used in this fixture are omitted entirely (consistent with
+  // JCS + Liuyanfeng's resolution of open item #2).
+  const compositionRefObject = {
+    action_ref: `ao_action_${kind}_v03_demo_01`,
+    delegation_ref: 'ao_delegation_v03_demo_01',
+    revocation_ref: 'ao_revocation_v03_demo_01',
+    key_source: 'inline',
+    authority_verified_at_ms: AUTH_TS_MS,
+    revocation_check_at_ms: REVOKE_TS_MS,
+    scope: ACTION_SCOPE,
+    version: COMPOSITION_REF_VERSION,
+    metadata: {
+      domain_verdicts: [domainVerdict],
+    },
+    composition_built_at_ms: BUILD_TS_MS,
   };
 
-  const composition_ref = compositionRefHash({
-    action_ref,
-    delegation_ref,
-    revocation_ref,
-    metadata,
-    key_source,
-    auth_ts_ms: AUTH_TS_MS,
-    revoke_ts_ms: REVOKE_TS_MS,
-    ts_ms: COMPOSITION_TS_MS,
-  });
+  const composition_ref = compositionRefHash(compositionRefObject);
 
   return {
-    spec: 'argentum-core/composition-ref-v1.0 + key_source (per argentum-core#10)',
-    fields: {
-      action_ref,
-      delegation_ref,
-      revocation_ref,
-      metadata,
-      key_source,
-      authority_verified_at_ms: AUTH_TS_MS,
-      revocation_check_at_ms: REVOKE_TS_MS,
-      ts_ms: COMPOSITION_TS_MS,
-    },
+    spec: 'argentum-core composition-ref-v1.0 (JCS canonical JSON, RFC 8785) per @Liuyanfeng1234 clarification in microsoft/autogen#7353',
+    fields: compositionRefObject,
     computed: {
       composition_ref,
-      hash_algorithm: 'SHA-256 (first 16 hex chars)',
-      raw_format: 'action:{action_ref}|delegation:{delegation_ref}|revocation:{revocation_ref}|meta:{json(metadata)}|key_src:{key_source}|auth_ts:{ms}|revoke_ts:{ms}|ts:{ms}',
-      canonical_metadata_json_preview: canonicalJSON(metadata).slice(0, 200) + '...',
+      hash_algorithm: 'SHA-256 over JCS canonical JSON (RFC 8785), first 16 hex chars',
+      jcs_implementation: 'canonicalize@npm (RFC 8785 reference implementation)',
+      jcs_canonical_bytes_length: jcs(compositionRefObject).length,
     },
     cross_references: {
       ietf_draft: 'https://datatracker.ietf.org/doc/draft-krausz-verification-state/',
       ao_receipt_spec: 'https://github.com/TKCollective/agentoracle-receipt-spec/tree/v0.3-binary-halt',
       argentum_core_field_def: 'https://github.com/giskard09/argentum-core/issues/10',
       aar_thread: 'https://github.com/microsoft/autogen/issues/7353',
+    },
+    notes: {
+      version_value: `Used "${COMPOSITION_REF_VERSION}" — if CompositionRefBuilder expects a different canonical value for this field, flag and we converge.`,
+      scope_value: `Used "${ACTION_SCOPE}" — per-action intent string per giskard09's definition. If a different canonical form is expected (e.g. a URN), flag and we converge.`,
+      build_ts_field_name: `Used "composition_built_at_ms" for the composition-time timestamp (the "ts" element from the legacy pipe format). If CompositionRefBuilder names this field differently in the JCS object, flag and we converge.`,
     },
   };
 }
@@ -148,9 +144,9 @@ const haltOut = buildOne({ kind: 'halt', jws: haltJws, payload: haltPayload });
 writeFileSync(join(OUT, 'composition-ref-allow.json'), JSON.stringify(allowOut, null, 2) + '\n');
 writeFileSync(join(OUT, 'composition-ref-halt.json'), JSON.stringify(haltOut, null, 2) + '\n');
 
-console.log('AAR fixtures written:');
+console.log('AAR fixtures written (JCS mode):');
 console.log('  composition-ref-allow.json  composition_ref =', allowOut.computed.composition_ref, ' (v_gate=' + allowPayload.v_gate + ')');
 console.log('  composition-ref-halt.json   composition_ref =', haltOut.computed.composition_ref, ' (v_gate=' + haltPayload.v_gate + ')');
 console.log('');
-console.log('Same canonical claim, same standard, same standard_hash, same timestamps.');
-console.log('Differ only in: v_adversarial_result → v_recommendation → v_gate → embedded receipt_jws.');
+console.log('Hash algorithm: SHA-256 over JCS canonical JSON (RFC 8785), first 16 hex chars');
+console.log('JCS implementation: canonicalize@npm (reference)');

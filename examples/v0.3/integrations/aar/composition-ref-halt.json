@@ -1,9 +1,14 @@
 {
-  "spec": "argentum-core/composition-ref-v1.0 + key_source (per argentum-core#10)",
+  "spec": "argentum-core composition-ref-v1.0 (JCS canonical JSON, RFC 8785) per @Liuyanfeng1234 clarification in microsoft/autogen#7353",
   "fields": {
     "action_ref": "ao_action_halt_v03_demo_01",
     "delegation_ref": "ao_delegation_v03_demo_01",
     "revocation_ref": "ao_revocation_v03_demo_01",
+    "key_source": "inline",
+    "authority_verified_at_ms": 1717804800000,
+    "revocation_check_at_ms": 1717804800500,
+    "scope": "verification:factual_claim:pre_publish",
+    "version": "composition-ref-v1.0",
     "metadata": {
       "domain_verdicts": [
         {
@@ -25,21 +30,23 @@
         }
       ]
     },
-    "key_source": "inline",
-    "authority_verified_at_ms": 1717804800000,
-    "revocation_check_at_ms": 1717804800500,
-    "ts_ms": 1717804801000
+    "composition_built_at_ms": 1717804801000
   },
   "computed": {
-    "composition_ref": "0eb7a736df8bc85c",
-    "hash_algorithm": "SHA-256 (first 16 hex chars)",
-    "raw_format": "action:{action_ref}|delegation:{delegation_ref}|revocation:{revocation_ref}|meta:{json(metadata)}|key_src:{key_source}|auth_ts:{ms}|revoke_ts:{ms}|ts:{ms}",
-    "canonical_metadata_json_preview": "{\"domain_verdicts\":[{\"claim_id\":\"sha256-27dfce3b87229e59f268c64d50e954a6d7b640bd75557ed0185b622284d0ec1b\",\"gate\":\"halt\",\"receipt_jws\":{\"payload\":\"eyJyZWNlaXB0X3ZlcnNpb24iOiIwLjMuMCIsIm1hcHBpbmdfaWQiOi..."
+    "composition_ref": "d9b73c7dd21e2c2a",
+    "hash_algorithm": "SHA-256 over JCS canonical JSON (RFC 8785), first 16 hex chars",
+    "jcs_implementation": "canonicalize@npm (RFC 8785 reference implementation)",
+    "jcs_canonical_bytes_length": 2539
   },
   "cross_references": {
     "ietf_draft": "https://datatracker.ietf.org/doc/draft-krausz-verification-state/",
     "ao_receipt_spec": "https://github.com/TKCollective/agentoracle-receipt-spec/tree/v0.3-binary-halt",
     "argentum_core_field_def": "https://github.com/giskard09/argentum-core/issues/10",
     "aar_thread": "https://github.com/microsoft/autogen/issues/7353"
+  },
+  "notes": {
+    "version_value": "Used \"composition-ref-v1.0\" — if CompositionRefBuilder expects a different canonical value for this field, flag and we converge.",
+    "scope_value": "Used \"verification:factual_claim:pre_publish\" — per-action intent string per giskard09's definition. If a different canonical form is expected (e.g. a URN), flag and we converge.",
+    "build_ts_field_name": "Used \"composition_built_at_ms\" for the composition-time timestamp (the \"ts\" element from the legacy pipe format). If CompositionRefBuilder names this field differently in the JCS object, flag and we converge."
   }
 }
