@@ -1,5 +1,7 @@
 # AgentOracle Verification Receipt Format — Draft v0.1
 
+[![Mycelium Provider](https://img.shields.io/badge/Mycelium-Provider-4a90e2)](https://github.com/giskard09/argentum-core/blob/main/docs/mycelium-provider-protocol.md)
+
 > **Status:** EARLY DRAFT for public discussion. Not yet implemented.
 > Posted in response to a [Coinbase Developer Discord #x402 thread](https://discord.gg/cdp) on Apr 29, 2026 about pre-action verification as a sibling family to environment-state attestations.
 > Comments / PRs / forks welcome.
@@ -309,6 +311,14 @@ This draft is a direct response to the architectural critique raised by Beenz / 
 Acknowledgement is not endorsement — they have not reviewed this draft.
 
 ---
+
+## Mycelium Trails
+
+This implementation is a [Mycelium Provider](https://github.com/giskard09/argentum-core/blob/main/docs/mycelium-provider-protocol.md) under the protocol published by [@giskard09](https://github.com/giskard09) on 2026-06-20.
+
+The `verification.v0.3` receipt envelope computes `action_ref` per the canonical JCS+SHA-256 derivation defined in [`draft-giskard-aeoess-action-ref`](https://github.com/giskard09/draft-giskard-aeoess-action-ref) over the four preimage fields (`agent_id`, `action_type`, `scope`, `timestamp` — RFC 3339 UTC with exactly 3 fractional digits). Conformance is validated against the [`agentoracle-v1` fixture set](https://github.com/giskard09/argentum-core/tree/main/examples/conformance/agentoracle-v1) merged into argentum-core on 2026-06-17, with byte-identical recomputation confirmed across two independent issuers (AgentOracle + AgentTrust).
+
+When AgentOracle is composed with a Mycelium-backed post-action attestation flow, the returned `mycelium_trail_id` can be carried at the envelope level as a sibling pointer to `v_gate` — see the composed-envelope spec (shipping with the second-implementer co-signature work, [tracking issue forthcoming]).
 
 ## License
 
