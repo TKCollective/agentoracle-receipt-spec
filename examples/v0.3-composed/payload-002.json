@@ -1,0 +1,38 @@
+{
+  "receipt_version": "0.3.0-composed",
+  "envelope_kind": "verification.v0.3+composed",
+  "subject": {
+    "claim_hash": "sha256-7c5c142ee4e445bfb75c7d4b4539d21d6b18fe468f5ad8c3bbd1dca5da721298",
+    "skill_hash": "sha256-ed98f3d14cb6b444b4464b955a607ee6d4d1255e75134dd299969804348e8484"
+  },
+  "v_gate": {
+    "issuer": "agentoracle",
+    "verdict": "act",
+    "v_confidence": 0.87,
+    "v_gate_threshold": 0.7,
+    "v_adversarial_result": "resilient",
+    "v_recommendation": "confident_supported",
+    "mapping_id": "agentoracle-v0.3-2026-05-30",
+    "v_gate_mapping_hash": "sha256-3b1f2d8e7a5c4b9f6e0a1d2c3b4a5e6f7c8d9e0a1b2c3d4e5f6a7b8c9d0e1f2a"
+  },
+  "v_gate_skill": {
+    "issuer": "agenttrust",
+    "verdict": "halt",
+    "skill_results": [
+      {
+        "name": "calendar.create_event",
+        "status": "untrusted_origin"
+      }
+    ],
+    "mcp_results": [],
+    "endpoint_results": [],
+    "mapping_id": "agenttrust-v0.3-2026-06-07",
+    "v_gate_mapping_hash": "sha256-307db9faa364cfe149fb5120d0451175175de40d7433c44915bfec57acc16ec4"
+  },
+  "composed_decision": "halt",
+  "composed_decision_rule": "AND_PRESENT",
+  "signature_meta": {
+    "agentoracle_jwks_url": "https://agentoracle.co/.well-known/jwks.json",
+    "agenttrust_jwks_url": "https://agenttrust.uk/.well-known/jwks.json"
+  }
+}
