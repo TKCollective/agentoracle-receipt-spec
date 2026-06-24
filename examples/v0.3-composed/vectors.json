@@ -1,0 +1,117 @@
+{
+  "suite": "verification.v0.3+composed",
+  "version": "v0.3-composed-phase-1",
+  "spec": "../../README.md (Mycelium Trails section) + IETF draft-krausz-verification-state-01 + signing-trust-ref-v1 alignment (Phase 2)",
+  "phase": 1,
+  "phase_note": "Phase 1 ships two-signer JWS general serialization with AgentOracle (v_gate) and AgentTrust (v_gate_skill). screen_ref (Presidio) is absent — Phase 2 follow-on PR adds it as an additive third sibling pointer + signature. mycelium_trail_id is absent except where a trail resolves (vector comp-004); the field MUST be absent (not null) when /external/trail fails per giskard09/argentum-core/docs/mycelium-provider-protocol.md.",
+  "composition_rule": "AND_PRESENT",
+  "composition_rule_note": "composed_decision = AND across all present sibling-pointer verdicts. Absent siblings do not contribute; any present-and-halt collapses the composed decision to halt.",
+  "envelope_kind": "verification.v0.3+composed",
+  "jws_typ": "application/vnd.verification.v0.3+composed+jws",
+  "signature_algorithm": "EdDSA (Ed25519)",
+  "canonicalization": "RFC 8785 (JCS)",
+  "issuers": [
+    {
+      "role": "v_gate",
+      "issuer": "agentoracle",
+      "jwks_file": "jwks-agentoracle.json",
+      "jwks_url": "https://agentoracle.co/.well-known/jwks.json",
+      "kid": "ao-fixture-v0.3-composed-2026-06",
+      "mapping_id": "agentoracle-v0.3-2026-05-30",
+      "mapping_hash": "sha256-3b1f2d8e7a5c4b9f6e0a1d2c3b4a5e6f7c8d9e0a1b2c3d4e5f6a7b8c9d0e1f2a"
+    },
+    {
+      "role": "v_gate_skill",
+      "issuer": "agenttrust",
+      "jwks_file": "jwks-agenttrust.json",
+      "jwks_url": "https://agenttrust.uk/.well-known/jwks.json",
+      "kid": "at-fixture-v0.3-composed-2026-06",
+      "mapping_id": "agenttrust-v0.3-2026-06-07",
+      "mapping_hash": "sha256-307db9faa364cfe149fb5120d0451175175de40d7433c44915bfec57acc16ec4"
+    }
+  ],
+  "accept_vectors": [
+    {
+      "id": "comp-001",
+      "description": "Happy path — both issuers approve. No trail anchor.",
+      "payload_file": "payload-001.json",
+      "jws_file": "jws-001.json",
+      "expected_canonical_sha256": "sha256-1a6c323758036d7c2c1c6ab1df8be737de64c6808cdd6d6d307b34d1e824b261",
+      "expected_composed_decision": "act",
+      "signer_kids": [
+        "ao-fixture-v0.3-composed-2026-06",
+        "at-fixture-v0.3-composed-2026-06"
+      ],
+      "screen_ref_present": false,
+      "mycelium_trail_id_present": false
+    },
+    {
+      "id": "comp-002",
+      "description": "AgentOracle approves, AgentTrust halts on skill — composed halts.",
+      "payload_file": "payload-002.json",
+      "jws_file": "jws-002.json",
+      "expected_canonical_sha256": "sha256-97c5e3572eb4c793de439977d15b8bc87033dbd39aabf98d092b97b023aadd9c",
+      "expected_composed_decision": "halt",
+      "signer_kids": [
+        "ao-fixture-v0.3-composed-2026-06",
+        "at-fixture-v0.3-composed-2026-06"
+      ],
+      "screen_ref_present": false,
+      "mycelium_trail_id_present": false
+    },
+    {
+      "id": "comp-003",
+      "description": "AgentTrust approves, AgentOracle refutes the claim — composed halts.",
+      "payload_file": "payload-003.json",
+      "jws_file": "jws-003.json",
+      "expected_canonical_sha256": "sha256-87012a5e89e4f0c137c189ac628d72f3a1f82e59ddcece9aa32cd17252f1a492",
+      "expected_composed_decision": "halt",
+      "signer_kids": [
+        "ao-fixture-v0.3-composed-2026-06",
+        "at-fixture-v0.3-composed-2026-06"
+      ],
+      "screen_ref_present": false,
+      "mycelium_trail_id_present": false
+    },
+    {
+      "id": "comp-004",
+      "description": "Happy path with a resolved mycelium_trail_id present.",
+      "payload_file": "payload-004.json",
+      "jws_file": "jws-004.json",
+      "expected_canonical_sha256": "sha256-fb413ef0897144144959072e481c893f53589ae985b4f77b87dbc5420ee1a5d3",
+      "expected_composed_decision": "act",
+      "signer_kids": [
+        "ao-fixture-v0.3-composed-2026-06",
+        "at-fixture-v0.3-composed-2026-06"
+      ],
+      "screen_ref_present": false,
+      "mycelium_trail_id_present": true
+    }
+  ],
+  "reject_vectors": [
+    {
+      "id": "comp-r01",
+      "description": "One signature valid, one signature tampered (AgentTrust signature corrupted). Entire envelope MUST reject.",
+      "payload_file": "payload-r01.json",
+      "jws_file": "jws-r01.json",
+      "expected_failure": "signature_invalid",
+      "failure_layer": "signature"
+    },
+    {
+      "id": "comp-r02",
+      "description": "mycelium_trail_id is null. Per the Mycelium Provider protocol (and the AgentOracle composed envelope spec) the field MUST be absent (not null) when /external/trail fails. Verifiers MUST reject envelopes whose mycelium_trail_id is null.",
+      "payload_file": "payload-r02.json",
+      "jws_file": "jws-r02.json",
+      "expected_failure": "mycelium_trail_id_is_null",
+      "failure_layer": "envelope_grammar"
+    },
+    {
+      "id": "comp-r03",
+      "description": "composed_decision = 'act' but v_gate verdict is 'halt' — violates AND_PRESENT rule. Verifier MUST recompute composed_decision from the present sibling pointers and reject on mismatch with the signed value.",
+      "payload_file": "payload-r03.json",
+      "jws_file": "jws-r03.json",
+      "expected_failure": "composed_decision_rule_violated",
+      "failure_layer": "composition_rule"
+    }
+  ]
+}
