@@ -149,17 +149,23 @@ def jcs(value: Any) -> str:
 
 AO_KID = "ao-fixture-v0.3-composed-2026-06"
 AT_KID = "at-fixture-v0.3-composed-2026-06"
+# Phase 2 — Presidio screen_ref signer (additive third leg).
+PRESIDIO_KID = "presidio-fixture-v0.3-composed-2026-06"
 
 ao_sk = derive_ed25519_key("agentoracle-issuer-v1")
 ao_pk = ao_sk.public_key()
 at_sk = derive_ed25519_key("agenttrust-issuer-v1")
 at_pk = at_sk.public_key()
+presidio_sk = derive_ed25519_key("presidio-issuer-v1")
+presidio_pk = presidio_sk.public_key()
 
 jwks_ao = {"keys": [jwk_from_public(ao_pk, AO_KID)]}
 jwks_at = {"keys": [jwk_from_public(at_pk, AT_KID)]}
+jwks_presidio = {"keys": [jwk_from_public(presidio_pk, PRESIDIO_KID)]}
 
 (HERE / "jwks-agentoracle.json").write_text(json.dumps(jwks_ao, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 (HERE / "jwks-agenttrust.json").write_text(json.dumps(jwks_at, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+(HERE / "jwks-presidio.json").write_text(json.dumps(jwks_presidio, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 # ----------------------------------------------------------------------------
 # Payloads
@@ -172,8 +178,18 @@ AT_MAPPING_HASH = "sha256-307db9faa364cfe149fb5120d0451175175de40d7433c44915bfec
 
 AO_JWKS_URL = "https://agentoracle.co/.well-known/jwks.json"
 AT_JWKS_URL = "https://agenttrust.uk/.well-known/jwks.json"
+PRESIDIO_JWKS_URL = "https://screen.presidio-group.eu/.well-known/jwks.json"
 
 SIGMETA = {"agentoracle_jwks_url": AO_JWKS_URL, "agenttrust_jwks_url": AT_JWKS_URL}
+# Phase 2 signature_meta — adds the Presidio JWKS URL and the signing-trust-ref-v1
+# pointer (multi_party / str-003 = all-signers-required, not an M-of-N threshold).
+# Kept distinct from SIGMETA so Phase 1 payloads stay byte-identical.
+SIGMETA_P2 = {
+    **SIGMETA,
+    "presidio_jwks_url": PRESIDIO_JWKS_URL,
+    "signing_trust_ref": "signing-trust-ref-v1:str-003",
+}
+PRESIDIO_MAPPING_ID = "presidio-x402-screen-v0.1-2026-06"
 
 
 def base_payload(idx: int, ao_verdict: str, at_verdict: str, *, claim: str, skill: str, trail_id: str | None = None) -> dict:
@@ -268,6 +284,103 @@ for idx, payload in enumerate([P001, P002, P003, P004], start=1):
 
 
 # ----------------------------------------------------------------------------
+# Phase 2 — Presidio screen_ref leg (additive third sibling pointer + signer)
+# ----------------------------------------------------------------------------
+# screen_ref is an action-ref-v1 content address over a PII-screening verdict.
+# The block carries the four-field preimage so a verifier recomputes the
+# action_ref itself rather than trusting the emitted hash; the scope follows the
+# normative sorted-entity rule (argentum-core action-ref.md, commit 16dbc92:
+# multi-value segments lexicographically sorted, comma-joined, no spaces;
+# clean-allow carries no entity segment). These three preimages are byte-identical
+# to argentum-core conformance vectors presidio-x402-003/004/005.
+
+
+def action_ref_of(screen: dict) -> str:
+    """action-ref-v1: lowercase-hex SHA-256 of the JCS canonical 4-field preimage."""
+    return hashlib.sha256(jcs(screen).encode("utf-8")).hexdigest()
+
+
+def screen_ref_block(*, scope: str, timestamp: str, verdict: str, expect: str) -> dict:
+    screen = {
+        "agent_id": "did:presidio:x402:agent-7f3a9c",
+        "action_type": "pii_screen",
+        "scope": scope,
+        "timestamp": timestamp,
+    }
+    ref = action_ref_of(screen)
+    # Enforce the cross-link to the published argentum-core targets at build time.
+    # An explicit raise, not assert: assert is stripped under `python -O`, which
+    # would let a drifted screen_ref hash ship silently.
+    if ref != expect:
+        raise ValueError(f"screen_ref drift: {ref} != {expect} for scope {scope!r}")
+    return {
+        "issuer": "presidio",
+        "verdict": verdict,
+        "screen": screen,
+        "action_ref": ref,
+        "mapping_id": PRESIDIO_MAPPING_ID,
+    }
+
+
+def phase2_payload(*, claim: str, skill: str, screen_ref: dict) -> dict:
+    payload = base_payload(0, "act", "act", claim=claim, skill=skill)
+    payload["signature_meta"] = SIGMETA_P2
+    payload["screen_ref"] = screen_ref
+    verdicts = [payload["v_gate"]["verdict"], payload["v_gate_skill"]["verdict"], screen_ref["verdict"]]
+    payload["composed_decision"] = "act" if all(v == "act" for v in verdicts) else "halt"
+    return payload
+
+
+# presidio-x402-003 (PII_REDACTED -> act), -004 (PII_BLOCKED -> halt), -005 (clean-allow -> act)
+SR_003 = screen_ref_block(
+    scope="presidio:x402.screen:PII_REDACTED:EMAIL_ADDRESS,US_SSN",
+    timestamp="2026-06-20T17:45:00.000Z", verdict="act",
+    expect="c832ef8610c6989f8c6f5cea51ac019b8ac9860e389110079a895e67595950a2",
+)
+SR_004 = screen_ref_block(
+    scope="presidio:x402.screen:PII_BLOCKED:EMAIL_ADDRESS,US_SSN",
+    timestamp="2026-06-20T17:45:01.000Z", verdict="halt",
+    expect="79509b33e9ad2bf7bf4f80bff2dd73d04e012204ae63bb1bbc1b9d052f337ef4",
+)
+SR_005 = screen_ref_block(
+    scope="presidio:x402.screen:clean-allow",
+    timestamp="2026-06-20T17:45:02.000Z", verdict="act",
+    expect="d9f8ecb35fef996e58a72cee801c17b4ca40c3ed3dede89438830e7a4a8c911d",
+)
+
+P005 = phase2_payload(claim="Bitcoin's price in USD on 2026-06-08 was $61,420.", skill="x402.pay", screen_ref=SR_003)
+P006 = phase2_payload(claim="Invoice for ACME Corp, contact jane@acme.example.", skill="x402.pay", screen_ref=SR_004)
+P007 = phase2_payload(claim="Weather forecast for Berlin tomorrow.", skill="x402.pay", screen_ref=SR_005)
+
+_P2_SIGNERS = [(ao_sk, AO_KID), (at_sk, AT_KID), (presidio_sk, PRESIDIO_KID)]
+# (description, payload) per Phase 2 accept vector; ids derived from the index
+# (comp-005..007) the same way the Phase 1 loop derives comp-001..004.
+_p2_vectors = [
+    ("Three-signer: AO act + AT act + Presidio PII_REDACTED screen (act) → composed act. screen_ref byte-matches argentum-core presidio-x402-003.", P005),
+    ("Three-signer: AO act + AT act, but Presidio PII_BLOCKED screen (halt) is the decisive leg → composed halts. A payment both gates approved is stopped by the screen. screen_ref = presidio-x402-004.", P006),
+    ("Three-signer: AO act + AT act + Presidio clean-allow screen (act, no entity segment) → composed act. screen_ref = presidio-x402-005.", P007),
+]
+for idx, (desc, payload) in enumerate(_p2_vectors, start=5):
+    vid = f"comp-{idx:03d}"
+    canonical_hash = "sha256-" + hashlib.sha256(jcs(payload).encode("utf-8")).hexdigest()
+    jws = sign_compose(payload, signers=_P2_SIGNERS)
+    (HERE / f"payload-{idx:03d}.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (HERE / f"jws-{idx:03d}.json").write_text(json.dumps(jws, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    vectors_accept.append({
+        "id": vid,
+        "description": desc,
+        "payload_file": f"payload-{idx:03d}.json",
+        "jws_file": f"jws-{idx:03d}.json",
+        "expected_canonical_sha256": canonical_hash,
+        "expected_composed_decision": payload["composed_decision"],
+        "signer_kids": [AO_KID, AT_KID, PRESIDIO_KID],
+        "screen_ref_present": True,
+        "screen_ref_action_ref": payload["screen_ref"]["action_ref"],
+        "mycelium_trail_id_present": "mycelium_trail_id" in payload,
+    })
+
+
+# ----------------------------------------------------------------------------
 # Reject vectors — each MUST fail verification for a documented reason
 # ----------------------------------------------------------------------------
 
@@ -320,16 +433,33 @@ reject_vectors.append({
     "failure_layer": "composition_rule",
 })
 
+# r04 (Phase 2) — screen_ref.action_ref does not match its own preimage. A content
+# address you cannot recompute is not a content address; the verifier MUST recompute
+# action_ref from screen_ref.screen and reject on mismatch rather than trust the hash.
+SR_TAMPERED = {**SR_003, "action_ref": "0" * 64}  # real preimage, wrong (tampered) hash
+P_R04 = phase2_payload(claim="Reject vector — screen_ref action_ref mismatch.", skill="x402.pay", screen_ref=SR_TAMPERED)
+jws_r04 = sign_compose(P_R04, signers=_P2_SIGNERS)
+(HERE / "payload-r04.json").write_text(json.dumps(P_R04, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+(HERE / "jws-r04.json").write_text(json.dumps(jws_r04, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+reject_vectors.append({
+    "id": "comp-r04",
+    "description": "screen_ref.action_ref is present but does not equal the action-ref-v1 recompute of screen_ref.screen (the four-field preimage). Verifiers MUST recompute and reject; trusting the emitted hash would let a screen claim a screening decision (the scope it recorded) it never derived.",
+    "payload_file": "payload-r04.json",
+    "jws_file": "jws-r04.json",
+    "expected_failure": "screen_ref_action_ref_mismatch",
+    "failure_layer": "screen_ref_content_address",
+})
+
 # ----------------------------------------------------------------------------
 # vectors.json manifest
 # ----------------------------------------------------------------------------
 
 suite = {
     "suite": "verification.v0.3+composed",
-    "version": "v0.3-composed-phase-1",
-    "spec": "../../README.md (Mycelium Trails section) + IETF draft-krausz-verification-state-01 + signing-trust-ref-v1 alignment (Phase 2)",
-    "phase": 1,
-    "phase_note": "Phase 1 ships two-signer JWS general serialization with AgentOracle (v_gate) and AgentTrust (v_gate_skill). screen_ref (Presidio) is absent — Phase 2 follow-on PR adds it as an additive third sibling pointer + signature. mycelium_trail_id is absent except where a trail resolves (vector comp-004); the field MUST be absent (not null) when /external/trail fails per giskard09/argentum-core/docs/mycelium-provider-protocol.md.",
+    "version": "v0.3-composed-phase-2",
+    "spec": "../../README.md (Mycelium Trails section) + IETF draft-krausz-verification-state-01 + signing-trust-ref-v1 + action-ref-v1 (argentum-core action-ref.md @16dbc92)",
+    "phase": 2,
+    "phase_note": "Phase 2 adds Presidio (screen_ref) as an additive third sibling pointer + signature on top of the byte-stable Phase 1 base. Phase 1 vectors (comp-001..004, comp-r01..r03) are unchanged byte-for-byte. screen_ref is an action-ref-v1 content address over a PII-screening verdict; its block carries the four-field preimage so verifiers recompute action_ref rather than trust it (comp-r04 covers the mismatch), and its scope follows the normative sorted-entity rule (action-ref.md @16dbc92). The three screen_ref preimages are byte-identical to argentum-core conformance vectors presidio-x402-003/004/005. signing-trust-ref-v1 (multi_party / str-003) carries the all-signers-required shape. mycelium_trail_id MUST be absent (not null) when /external/trail fails per giskard09/argentum-core/docs/mycelium-provider-protocol.md.",
     "composition_rule": "AND_PRESENT",
     "composition_rule_note": "composed_decision = AND across all present sibling-pointer verdicts. Absent siblings do not contribute; any present-and-halt collapses the composed decision to halt.",
     "envelope_kind": ENVELOPE_KIND,
@@ -339,6 +469,7 @@ suite = {
     "issuers": [
         {"role": "v_gate", "issuer": "agentoracle", "jwks_file": "jwks-agentoracle.json", "jwks_url": AO_JWKS_URL, "kid": AO_KID, "mapping_id": AO_MAPPING_ID, "mapping_hash": AO_MAPPING_HASH},
         {"role": "v_gate_skill", "issuer": "agenttrust", "jwks_file": "jwks-agenttrust.json", "jwks_url": AT_JWKS_URL, "kid": AT_KID, "mapping_id": AT_MAPPING_ID, "mapping_hash": AT_MAPPING_HASH},
+        {"role": "screen_ref", "issuer": "presidio", "jwks_file": "jwks-presidio.json", "jwks_url": PRESIDIO_JWKS_URL, "kid": PRESIDIO_KID, "mapping_id": PRESIDIO_MAPPING_ID, "spec": "argentum-core action-ref.md @16dbc92 (action-ref-v1)"},
     ],
     "accept_vectors": vectors_accept,
     "reject_vectors": reject_vectors,

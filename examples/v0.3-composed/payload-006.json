@@ -1,0 +1,52 @@
+{
+  "receipt_version": "0.3.0-composed",
+  "envelope_kind": "verification.v0.3+composed",
+  "subject": {
+    "claim_hash": "sha256-7bf17225d416e3c703c53d0ba5ebfea49863019120c92f5157ed62b9893d8e37",
+    "skill_hash": "sha256-192d9e98155314e17fd70e627d032ec4d9d77782b78aec20c203bfa936d803c6"
+  },
+  "v_gate": {
+    "issuer": "agentoracle",
+    "verdict": "act",
+    "v_confidence": 0.87,
+    "v_gate_threshold": 0.7,
+    "v_adversarial_result": "resilient",
+    "v_recommendation": "confident_supported",
+    "mapping_id": "agentoracle-v0.3-2026-05-30",
+    "v_gate_mapping_hash": "sha256-3b1f2d8e7a5c4b9f6e0a1d2c3b4a5e6f7c8d9e0a1b2c3d4e5f6a7b8c9d0e1f2a"
+  },
+  "v_gate_skill": {
+    "issuer": "agenttrust",
+    "verdict": "act",
+    "skill_results": [
+      {
+        "name": "calendar.create_event",
+        "status": "clean"
+      }
+    ],
+    "mcp_results": [],
+    "endpoint_results": [],
+    "mapping_id": "agenttrust-v0.3-2026-06-07",
+    "v_gate_mapping_hash": "sha256-307db9faa364cfe149fb5120d0451175175de40d7433c44915bfec57acc16ec4"
+  },
+  "composed_decision": "halt",
+  "composed_decision_rule": "AND_PRESENT",
+  "signature_meta": {
+    "agentoracle_jwks_url": "https://agentoracle.co/.well-known/jwks.json",
+    "agenttrust_jwks_url": "https://agenttrust.uk/.well-known/jwks.json",
+    "presidio_jwks_url": "https://screen.presidio-group.eu/.well-known/jwks.json",
+    "signing_trust_ref": "signing-trust-ref-v1:str-003"
+  },
+  "screen_ref": {
+    "issuer": "presidio",
+    "verdict": "halt",
+    "screen": {
+      "agent_id": "did:presidio:x402:agent-7f3a9c",
+      "action_type": "pii_screen",
+      "scope": "presidio:x402.screen:PII_BLOCKED:EMAIL_ADDRESS,US_SSN",
+      "timestamp": "2026-06-20T17:45:01.000Z"
+    },
+    "action_ref": "79509b33e9ad2bf7bf4f80bff2dd73d04e012204ae63bb1bbc1b9d052f337ef4",
+    "mapping_id": "presidio-x402-screen-v0.1-2026-06"
+  }
+}

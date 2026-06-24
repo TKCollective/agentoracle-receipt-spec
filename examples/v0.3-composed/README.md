@@ -1,9 +1,14 @@
-# `verification.v0.3+composed` — conformance fixtures (Phase 1)
+# `verification.v0.3+composed` — conformance fixtures (Phase 1 + Phase 2)
 
-Two-signer composed envelope. AgentOracle (`v_gate`) and AgentTrust
-(`v_gate_skill`) co-sign a single JWS general serialization over one canonical
-payload. Phase 2 adds Presidio (`screen_ref`) as an additive third signer
-without altering this suite.
+Composed envelope, up to three co-signers over one canonical payload (JWS
+general serialization). AgentOracle (`v_gate`) and AgentTrust (`v_gate_skill`)
+are the Phase 1 base; **Phase 2 adds Presidio (`screen_ref`)** as an additive
+third sibling pointer + signature. The Phase 1 vectors (`comp-001..004`,
+`comp-r01..r03`) are unchanged byte-for-byte — Phase 2 only appends. `screen_ref`
+is an `action-ref-v1` content address over a PII-screening verdict whose block
+carries its four-field preimage, so verifiers recompute the `action_ref` rather
+than trust it; the three Phase 2 `screen_ref` preimages are byte-identical to
+argentum-core conformance vectors `presidio-x402-003/004/005`.
 
 Spec references:
 - `../../README.md` — Mycelium Trails section, sibling-pointer model
@@ -19,12 +24,15 @@ verify.mjs               — Node.js stdlib verifier (node:crypto + vendored JCS
 verify.py                — Python stdlib + cryptography sibling verifier
 vectors.json             — suite manifest (accept + reject vectors, expected
                            canonical SHA-256, signer kids, composition flags)
-payload-{001..004}.json  — accept-vector payloads (pre-JCS object form)
-jws-{001..004}.json      — accept-vector JWS general serializations
-payload-r{01..03}.json   — reject-vector payloads
-jws-r{01..03}.json       — reject-vector JWS general serializations
+payload-{001..007}.json  — accept-vector payloads (pre-JCS object form);
+                           005..007 carry the Phase 2 screen_ref leg
+jws-{001..007}.json      — accept-vector JWS general serializations
+                           (005..007 are three-signer)
+payload-r{01..04}.json   — reject-vector payloads (r04 = screen_ref mismatch)
+jws-r{01..04}.json       — reject-vector JWS general serializations
 jwks-agentoracle.json    — Ed25519 public key (kid ao-fixture-v0.3-composed-2026-06)
 jwks-agenttrust.json     — Ed25519 public key (kid at-fixture-v0.3-composed-2026-06)
+jwks-presidio.json       — Ed25519 public key (kid presidio-fixture-v0.3-composed-2026-06)
 ```
 
 ## Coverage
@@ -37,6 +45,9 @@ jwks-agenttrust.json     — Ed25519 public key (kid at-fixture-v0.3-composed-20
 | comp-002 | AgentOracle approves, AgentTrust halts on skill — composed halts.                  | `halt`            | absent |
 | comp-003 | AgentOracle halts on gate, AgentTrust approves — composed halts.                   | `halt`            | absent |
 | comp-004 | Both approve and `mycelium_trail_id` resolves — trail is present as a string.      | `act`             | present |
+| comp-005 | Three-signer: AO + AT + Presidio `PII_REDACTED` screen, all act (= `presidio-x402-003`). | `act`        | absent |
+| comp-006 | Three-signer: AO + AT approve, Presidio `PII_BLOCKED` screen is the decisive halt (= `presidio-x402-004`). | `halt` | absent |
+| comp-007 | Three-signer: AO + AT + Presidio `clean-allow` screen, all act (= `presidio-x402-005`). | `act`         | absent |
 
 ### Reject vectors (must fail for the stated reason)
 
@@ -45,6 +56,7 @@ jwks-agenttrust.json     — Ed25519 public key (kid at-fixture-v0.3-composed-20
 | comp-r01 | AgentTrust signature tampered after the fact                | `signature_invalid`               |
 | comp-r02 | `"mycelium_trail_id": null` in the payload (grammar break)  | `mycelium_trail_id_is_null`       |
 | comp-r03 | Signed `composed_decision` disagrees with AND_PRESENT recompute | `composed_decision_rule_violated` |
+| comp-r04 | `screen_ref.action_ref` ≠ `action-ref-v1` recompute of its preimage | `screen_ref_action_ref_mismatch` |
 
 ## Two-receipt composition framing
 
@@ -91,7 +103,7 @@ python3 verify.py
 Both must print byte-identical output:
 
 ```
-PASS: 7 vectors (4 accept verified end-to-end, 3 reject correctly refused)
+PASS: 11 vectors (7 accept verified end-to-end, 4 reject correctly refused)
 ```
 
 The two implementations are intentionally independent recomputations — Node
@@ -113,12 +125,16 @@ payload, re-signs both JWS heads, and rewrites `vectors.json` with the new
 
 ## Phase 1 vs Phase 2
 
-| Aspect                          | Phase 1 (this suite)               | Phase 2 (follow-on PR)                                |
+Both phases now ship in this suite; Phase 2 is purely additive on the byte-stable
+Phase 1 base.
+
+| Aspect                          | Phase 1 (`comp-001..004`, `r01..r03`) | Phase 2 (`comp-005..007`, `r04`)                       |
 |---------------------------------|------------------------------------|--------------------------------------------------------|
 | Signers                         | AgentOracle, AgentTrust            | + Presidio                                            |
 | Sibling pointers                | `v_gate`, `v_gate_skill`, (`mycelium_trail_id`) | + `screen_ref`                              |
-| `action-ref` scope tokens       | Single value per segment           | Lexicographically sorted, comma-joined (vstantch rule) |
-| `signing-trust-ref-v1` adoption | Acknowledged                       | Normative                                             |
-| Decision rule                   | `AND_PRESENT`                      | `AND_PRESENT` (unchanged)                             |
+| `action-ref` scope tokens       | Single value per segment           | Lexicographically sorted, comma-joined, no spaces (action-ref.md @16dbc92) |
+| `signing-trust-ref-v1`          | Acknowledged                       | Pointer present (`multi_party` / `str-003`)            |
+| `screen_ref` recompute          | n/a                                | Verifier recomputes `action_ref` from preimage (`r04`) |
+| Decision rule                   | `AND_PRESENT`                      | `AND_PRESENT` (unchanged, now folds `screen_ref`)      |
 
-Vector IDs, kids, and mapping hashes carry forward unchanged into Phase 2.
+Phase 1 vector IDs, kids, and mapping hashes are unchanged byte-for-byte.

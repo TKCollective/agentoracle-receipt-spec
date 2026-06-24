@@ -110,6 +110,24 @@ async function verifyOne(payload, jws, jwksByIssuer, opts = {}) {
     return { ok: false, reason: 'composed_decision_rule_violated', signed: payload.composed_decision, recomputed: composed };
   }
 
+  // 3b. screen_ref content-address recompute (Phase 2). Present iff the key
+  // carries a non-null value. Recompute action_ref from the four-field preimage
+  // rather than trusting the emitted hash. This binds the screening decision in
+  // `scope` (verdict class + entity set); the act/halt composition verdict is
+  // bound by the signatures and the AND_PRESENT recompute above. Presence/type
+  // tests are kept byte-for-byte identical to verify.py.
+  if (payload.screen_ref !== undefined && payload.screen_ref !== null) {
+    const screenRef = payload.screen_ref;
+    const screen = (typeof screenRef === 'object' && !Array.isArray(screenRef)) ? screenRef.screen : undefined;
+    if (typeof screen !== 'object' || screen === null || Array.isArray(screen)) {
+      return { ok: false, reason: 'screen_ref_missing_preimage' };
+    }
+    const recomputed = createHash('sha256').update(Buffer.from(jcs(screen), 'utf-8')).digest('hex');
+    if (recomputed !== screenRef.action_ref) {
+      return { ok: false, reason: 'screen_ref_action_ref_mismatch', computed: recomputed, claimed: screenRef.action_ref };
+    }
+  }
+
   // 4. Verify every signature in the JWS general serialization
   const payloadB64 = jws.payload;
   // Sanity: the b64-decoded payload bytes equal the canonical bytes we just hashed.

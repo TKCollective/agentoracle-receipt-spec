@@ -160,6 +160,27 @@ def verify_one(
             "recomputed": composed,
         }
 
+    # 3b. screen_ref content-address recompute (Phase 2). Present iff the key
+    # carries a non-null value. Recompute action_ref from the four-field preimage
+    # rather than trusting the emitted hash. This binds the screening decision
+    # recorded in `scope` (verdict class + entity set); the act/halt composition
+    # verdict is bound by the signatures and the AND_PRESENT recompute above.
+    # Presence/type tests are kept byte-for-byte identical to verify.mjs so the
+    # two runtimes never disagree on a malformed screen_ref.
+    if payload.get("screen_ref") is not None:
+        screen_ref = payload["screen_ref"]
+        screen = screen_ref.get("screen") if isinstance(screen_ref, dict) else None
+        if not isinstance(screen, dict):
+            return {"ok": False, "reason": "screen_ref_missing_preimage"}
+        recomputed = hashlib.sha256(jcs(screen).encode("utf-8")).hexdigest()
+        if recomputed != screen_ref.get("action_ref"):
+            return {
+                "ok": False,
+                "reason": "screen_ref_action_ref_mismatch",
+                "computed": recomputed,
+                "claimed": screen_ref.get("action_ref"),
+            }
+
     # 4. Verify every JWS signature
     payload_b64 = jws["payload"]
     payload_bytes = b64u_decode(payload_b64)
