@@ -1,9 +1,9 @@
 {
   "suite": "verification.v0.3+composed",
-  "version": "v0.3-composed-phase-1",
-  "spec": "../../README.md (Mycelium Trails section) + IETF draft-krausz-verification-state-01 + signing-trust-ref-v1 alignment (Phase 2)",
-  "phase": 1,
-  "phase_note": "Phase 1 ships two-signer JWS general serialization with AgentOracle (v_gate) and AgentTrust (v_gate_skill). screen_ref (Presidio) is absent — Phase 2 follow-on PR adds it as an additive third sibling pointer + signature. mycelium_trail_id is absent except where a trail resolves (vector comp-004); the field MUST be absent (not null) when /external/trail fails per giskard09/argentum-core/docs/mycelium-provider-protocol.md.",
+  "version": "v0.3-composed-phase-2",
+  "spec": "../../README.md (Mycelium Trails section) + IETF draft-krausz-verification-state-01 + signing-trust-ref-v1 + action-ref-v1 (argentum-core action-ref.md @16dbc92)",
+  "phase": 2,
+  "phase_note": "Phase 2 adds Presidio (screen_ref) as an additive third sibling pointer + signature on top of the byte-stable Phase 1 base. Phase 1 vectors (comp-001..004, comp-r01..r03) are unchanged byte-for-byte. screen_ref is an action-ref-v1 content address over a PII-screening verdict; its block carries the four-field preimage so verifiers recompute action_ref rather than trust it (comp-r04 covers the mismatch), and its scope follows the normative sorted-entity rule (action-ref.md @16dbc92). The three screen_ref preimages are byte-identical to argentum-core conformance vectors presidio-x402-003/004/005. signing-trust-ref-v1 (multi_party / str-003) carries the all-signers-required shape. mycelium_trail_id MUST be absent (not null) when /external/trail fails per giskard09/argentum-core/docs/mycelium-provider-protocol.md.",
   "composition_rule": "AND_PRESENT",
   "composition_rule_note": "composed_decision = AND across all present sibling-pointer verdicts. Absent siblings do not contribute; any present-and-halt collapses the composed decision to halt.",
   "envelope_kind": "verification.v0.3+composed",
@@ -28,6 +28,15 @@
       "kid": "at-fixture-v0.3-composed-2026-06",
       "mapping_id": "agenttrust-v0.3-2026-06-07",
       "mapping_hash": "sha256-307db9faa364cfe149fb5120d0451175175de40d7433c44915bfec57acc16ec4"
+    },
+    {
+      "role": "screen_ref",
+      "issuer": "presidio",
+      "jwks_file": "jwks-presidio.json",
+      "jwks_url": "https://screen.presidio-group.eu/.well-known/jwks.json",
+      "kid": "presidio-fixture-v0.3-composed-2026-06",
+      "mapping_id": "presidio-x402-screen-v0.1-2026-06",
+      "spec": "argentum-core action-ref.md @16dbc92 (action-ref-v1)"
     }
   ],
   "accept_vectors": [
@@ -86,6 +95,54 @@
       ],
       "screen_ref_present": false,
       "mycelium_trail_id_present": true
+    },
+    {
+      "id": "comp-005",
+      "description": "Three-signer: AO act + AT act + Presidio PII_REDACTED screen (act) → composed act. screen_ref byte-matches argentum-core presidio-x402-003.",
+      "payload_file": "payload-005.json",
+      "jws_file": "jws-005.json",
+      "expected_canonical_sha256": "sha256-90bec800f087f25d06758ac40b3302b8d7c339c482190a50f13131b45e3730d2",
+      "expected_composed_decision": "act",
+      "signer_kids": [
+        "ao-fixture-v0.3-composed-2026-06",
+        "at-fixture-v0.3-composed-2026-06",
+        "presidio-fixture-v0.3-composed-2026-06"
+      ],
+      "screen_ref_present": true,
+      "screen_ref_action_ref": "c832ef8610c6989f8c6f5cea51ac019b8ac9860e389110079a895e67595950a2",
+      "mycelium_trail_id_present": false
+    },
+    {
+      "id": "comp-006",
+      "description": "Three-signer: AO act + AT act, but Presidio PII_BLOCKED screen (halt) is the decisive leg → composed halts. A payment both gates approved is stopped by the screen. screen_ref = presidio-x402-004.",
+      "payload_file": "payload-006.json",
+      "jws_file": "jws-006.json",
+      "expected_canonical_sha256": "sha256-e39ece74933c37d7102a8ac67ebfa2825a04d377c2368c8ba7dbeeefe9a0fcdd",
+      "expected_composed_decision": "halt",
+      "signer_kids": [
+        "ao-fixture-v0.3-composed-2026-06",
+        "at-fixture-v0.3-composed-2026-06",
+        "presidio-fixture-v0.3-composed-2026-06"
+      ],
+      "screen_ref_present": true,
+      "screen_ref_action_ref": "79509b33e9ad2bf7bf4f80bff2dd73d04e012204ae63bb1bbc1b9d052f337ef4",
+      "mycelium_trail_id_present": false
+    },
+    {
+      "id": "comp-007",
+      "description": "Three-signer: AO act + AT act + Presidio clean-allow screen (act, no entity segment) → composed act. screen_ref = presidio-x402-005.",
+      "payload_file": "payload-007.json",
+      "jws_file": "jws-007.json",
+      "expected_canonical_sha256": "sha256-552f1ed68837130d7e9926d2717ebe62f7ec1437da0d783ee6c1ea182c7996cb",
+      "expected_composed_decision": "act",
+      "signer_kids": [
+        "ao-fixture-v0.3-composed-2026-06",
+        "at-fixture-v0.3-composed-2026-06",
+        "presidio-fixture-v0.3-composed-2026-06"
+      ],
+      "screen_ref_present": true,
+      "screen_ref_action_ref": "d9f8ecb35fef996e58a72cee801c17b4ca40c3ed3dede89438830e7a4a8c911d",
+      "mycelium_trail_id_present": false
     }
   ],
   "reject_vectors": [
@@ -112,6 +169,14 @@
       "jws_file": "jws-r03.json",
       "expected_failure": "composed_decision_rule_violated",
       "failure_layer": "composition_rule"
+    },
+    {
+      "id": "comp-r04",
+      "description": "screen_ref.action_ref is present but does not equal the action-ref-v1 recompute of screen_ref.screen (the four-field preimage). Verifiers MUST recompute and reject; trusting the emitted hash would let a screen claim a screening decision (the scope it recorded) it never derived.",
+      "payload_file": "payload-r04.json",
+      "jws_file": "jws-r04.json",
+      "expected_failure": "screen_ref_action_ref_mismatch",
+      "failure_layer": "screen_ref_content_address"
     }
   ]
 }
