@@ -3,7 +3,7 @@
 **Status:** DRAFT FOR DISCUSSION, revision 1 — not yet normative. Comments welcome via issues/PRs.
 **Extends:** verification.v0.3 (and v0.3+composed). Additive at the canonical-bytes level: a valid v0.3 envelope's bytes are unchanged by this extension (see §5 and §2.1 for the rules that keep that true).
 **Author:** Joe Krausz, AgentOracle (TK Collective LLC)
-**Date:** 2026-07-26 (rev-1; original draft 2026-07-24)
+**Date:** 2026-07-28 (rev-1.1; rev-1 2026-07-26; original draft 2026-07-24)
 
 **rev-1 changelog.** This revision incorporates the findings of the draft's first hostile review, by **poteshniy (AgentTrust)** — the format's independent second implementer — across three review rounds (PR #5 and follow-ups), plus one determinism point absorbed from an adjacent multi-value discussion by **vstantch**. Findings are credited inline as [P-n] (poteshniy) and [V-1] (vstantch). Every change is listed here; the diff against the original draft is visible on PR #5.
 
@@ -19,6 +19,7 @@
 - [P-10] absent-vs-null: MUST omit, never null (§4.1)
 - [P-11] smaller items: `target_sha256` cites v0.3 `envelope_hash`; hash-after-decompression pinned; `ref` uniqueness MUST; completeness signal added (§2.2, §2.4, §3.1)
 - [V-1] `evidence_seals` ordering pinned (lexicographic by `ref`); v0.3 `evidence` ordering becomes a forward-looking SHOULD (§2.5)
+- [P-12] `test-clock` conformance domain added so shortfall/skewed-clock vectors are deterministic and offline (§3.1, §6.1) — resolution of the implementer's vector-construction question, rev-1.1
 
 ---
 
@@ -93,7 +94,7 @@ A v0.4 envelope MAY carry `anchors`, an array of anchor objects **outside** the 
 
 | Field | Req | Description |
 |---|---|---|
-| `type` | MUST | One of `evm-tx`, `ots` (OpenTimestamps), `rfc3161`, or a collision-resistant custom string. |
+| `type` | MUST | One of `evm-tx`, `ots` (OpenTimestamps), `rfc3161`, `test-clock` (conformance only — see §6.1), or a collision-resistant custom string. |
 | `target_sha256` | MUST | The canonical envelope hash this anchor commits to — the same value as v0.3's `envelope_hash` (sha256 over the canonical payload bytes) [P-11]. |
 | `merkle_proof` | MAY | If the anchor commits to a batch root: an inclusion proof per §3.3 plus `merkle_root`. |
 | `anchor_data` | MUST | Type-specific proof: for `evm-tx`, chain ID + tx hash; for `ots`, the base64 OTS proof; for `rfc3161`, the base64 DER TimeStampToken. |
@@ -154,6 +155,33 @@ Verifiers MUST ignore unrecognized members for semantic purposes — subject to 
 Check-set selection is **content-driven**: verifiers MUST apply the v0.4 checks of §2–§4 whenever any v0.4 field group (`evidence_seals`, `seals_complete`, `anchor_commitments`, `anchors`) is present — regardless of the declared `typ`. A v0.3-declared envelope carrying v0.4 fields MUST additionally be rejected as `typ_field_mismatch`: the mandatory checks of this extension are not issuer-selectable, and a declared-down envelope is treating them as opt-in. (The reject vector for this case is contributed by the independent implementer — same shape as at-r01.)
 
 ## 6. Conformance (vector classes for rev-1)
+
+### 6.1 The `test-clock` conformance domain
+
+Deterministic conformance vectors for §3.5's adjudication require a time proof
+whose reading is fixed forever — which no real clock domain can provide (TSA
+tokens age, certificate chains expire, chain state moves). The spec therefore
+reserves one honest fiction, declared as such:
+
+- `type: "test-clock"` — reserved for conformance vectors only.
+- `anchor_data` is `{"reading": "<RFC 3339 UTC>"}`; the proof-derived clock
+  reading (§3.1, §3.5) is that declared value, verbatim.
+- Verifiers MUST accept `test-clock` as a valid clock domain only when
+  operating in an explicitly enabled conformance mode, and MUST reject any
+  envelope carrying a `test-clock` anchor in production verification
+  (reject code: `test_clock_in_production`).
+- `anchor_commitments.expected_types` MAY include `test-clock` in vectors;
+  a commitment naming `test-clock` outside conformance mode is likewise a
+  production reject.
+
+This gives the shortfall and skewed-clock vector classes stable bytes and
+fully offline reproduction: the vector declares `anchor_by`, commits to the
+`test-clock` domain, and adjudicates against a declared reading — identical
+results in any year, on any machine. A non-normative companion vector using a
+genuine RFC 3161 token (real TSA, real `genTime`) accompanies the suite as a
+sanity check that the same adjudication path holds against real cryptographic
+time; it is marked time-pinned and expires with its certificate chain, and is
+not part of the normative reject set.
 
 **Accept:** sealed set matching evidence (ordered per §2.5) · `seals_complete` satisfied · single anchor of each type · batched anchor with valid §3.3 inclusion proof · commitment met within `anchor_by` (proof-derived readings).
 **Reject:** `typ_field_mismatch` (typ-downgrade) · `evidence_seal_unmatched` · `evidence_seal_incomplete` · null-instead-of-absent · `evidence_seals` mis-ordered · inclusion proof recomputing to wrong root · rfc3161 token over wrong hash · commitment shortfall past deadline.
