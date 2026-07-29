@@ -1,0 +1,26 @@
+{
+  "_comment": "FIXTURE-SUITE KEY MATERIAL \u2014 NEVER PRODUCTION. This file contains both the public and PRIVATE halves of the Ed25519 keypair used to sign the detached RFC 7797 sample fixture (sample_receipt_detached_jws.json). It is committed on purpose: fixtures exist for reproducibility, and publishing the private half here lets any implementer regenerate the fixture bytes from scratch and confirm they match. The kid is clearly labeled 'ao-fixture-detached-*' so no verifier confuses this with a production-signed receipt. The public half is also published in the site JWKS at https://agentoracle.co/.well-known/jwks.json alongside the production kids (which do NOT have their private halves published).",
+  "keys": [
+    {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "d": "_beLFJccJa2BWRIMfeMmkvdmiCfDpp5w-1asEJmRARg",
+      "x": "14OeViTfxu44QsPGfsGxKjClXj4mxuait-ZZwqpTqpw",
+      "kid": "ao-fixture-detached-rfc7797-2026-07-ed25519-0f8bf2a5",
+      "use": "sig",
+      "alg": "EdDSA"
+    }
+  ],
+  "public_only": {
+    "keys": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "14OeViTfxu44QsPGfsGxKjClXj4mxuait-ZZwqpTqpw",
+        "kid": "ao-fixture-detached-rfc7797-2026-07-ed25519-0f8bf2a5",
+        "use": "sig",
+        "alg": "EdDSA"
+      }
+    ]
+  }
+}

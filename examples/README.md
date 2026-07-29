@@ -59,25 +59,55 @@ Same expected output under `joserfc`.
 
 The production wire format is **detached** JWS (RFC 7797, `b64=false` flow) —
 the receipt body transports the payload separately from the signature to
-minimize header size on every `/evaluate` response.
+minimize header size on every `/evaluate` response. The signing input follows
+RFC 7797 §3 exactly:
 
-The verifying examples here use the **attached** flattened form so the signature
-covers exact bytes inside the JWS and there is zero canonicalization ambiguity
-across languages. `sample_receipt_detached_jws.json` is included for spec
-completeness; a detached-form verifier needs a byte-accurate canonical
-serializer on both sides (issuer + verifier), which the attached form
-side-steps by embedding the bytes directly.
+```
+BASE64URL(UTF8(JWS Protected Header)) || '.' || JWS Payload
+```
+
+— with the payload transported as raw octets (no base64 wrapping), which is
+what the `"b64": false` header + `"crit": ["b64"]` marker together declare.
+The payload bytes are **RFC 8785 (JCS)** canonicalized before signing so that
+two independent implementations sign over byte-identical input.
+
+The verifying examples here come in two languages and two forms:
+
+| Script | Form | Key |
+|---|---|---|
+| `verify_node.mjs`         | Attached (flattened JWS) | Production `ao-receipt-2026-04-ed25519-*` in the live JWKS |
+| `verify_python.py`        | Attached (flattened JWS) | Production `ao-receipt-2026-04-ed25519-*` in the live JWKS |
+| `verify_detached_node.mjs` | Detached (RFC 7797 `b64=false`) | Fixture-suite `ao-fixture-detached-rfc7797-2026-07-*` — see below |
+| `verify_detached_python.py`| Detached (RFC 7797 `b64=false`) | Fixture-suite `ao-fixture-detached-rfc7797-2026-07-*` — see below |
 
 ## What you're seeing here
 
 1. **The public key is live.** `GET https://agentoracle.co/.well-known/jwks.json`
-   returns an RFC 7517 JWK Set with one Ed25519 key.
-2. **The signature is real.** `sample_receipt_attached_jws.json` was signed
-   with the matching private key. The private key lives only in the issuer
-   environment; no test key or placeholder is used here.
-3. **Standard libraries verify it.** Both `jose` (Node, 9k+ GitHub stars) and
-   `joserfc` (Python, Authlib) verify cleanly with no custom parsing. If either
-   example fails, the spec is wrong — this is the compliance test.
+   returns an RFC 7517 JWK Set with four Ed25519 keys — one legacy receipt
+   signer, two composed-envelope signers (site + gateway), and one
+   fixture-suite key for the detached sample. All four are clearly labeled by
+   `kid`.
+2. **The attached sample was signed with a production key.**
+   `sample_receipt_attached_jws.json` was signed with the matching private
+   half of `ao-receipt-2026-04-ed25519-f2753b7c`; that private half lives only
+   in the issuer environment and is never in this repo.
+3. **The detached sample was signed with a fixture-suite key, published in
+   the JWKS, stated plainly — not a production key.**
+   `sample_receipt_detached_jws.json` is signed with the fixture kid
+   `ao-fixture-detached-rfc7797-2026-07-*`. Its keypair — both public and
+   private halves — is committed to this repo at `jwks-fixture-detached.json`
+   because reproducibility is the whole point of a fixture: any implementer
+   can run `generate_detached_fixture.py` and get byte-identical output to
+   the committed fixture, or `verify_detached_python.py` / `.mjs` and confirm
+   the committed bytes verify. No production key is ever exposed by this
+   design; production kids are in the same JWKS but their private halves are
+   not published.
+4. **Standard libraries verify the attached form.** Both `jose` (Node, 9k+
+   GitHub stars) and `joserfc` (Python, Authlib) verify cleanly with no
+   custom parsing.
+5. **The detached verifiers are minimal and dependency-only-on-stdlib
+   (`cryptography` for Ed25519 in Python; only `node:crypto` in Node) so a
+   stranger can read the whole recomputation contract in ~50 lines.**
 
 ## Questions / PRs
 
