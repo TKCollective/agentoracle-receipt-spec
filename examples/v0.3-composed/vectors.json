@@ -18,7 +18,7 @@
       "jwks_url": "https://agentoracle.co/.well-known/jwks.json",
       "kid": "ao-fixture-v0.3-composed-2026-06",
       "mapping_id": "agentoracle-v0.3-2026-05-30",
-      "mapping_hash": "sha256-3b1f2d8e7a5c4b9f6e0a1d2c3b4a5e6f7c8d9e0a1b2c3d4e5f6a7b8c9d0e1f2a"
+      "mapping_hash": "sha256-0a78263976790df6e76cd9f3f441bf5a3b5c3a82e346b5aca43e49626881d7b0"
     },
     {
       "role": "v_gate_skill",
@@ -45,7 +45,7 @@
       "description": "Happy path — both issuers approve. No trail anchor.",
       "payload_file": "payload-001.json",
       "jws_file": "jws-001.json",
-      "expected_canonical_sha256": "sha256-1a6c323758036d7c2c1c6ab1df8be737de64c6808cdd6d6d307b34d1e824b261",
+      "expected_canonical_sha256": "sha256-b6a7be18e206cd37fbf051bdec65b745c4b02dd8b46759e7aeb8e39a94095eca",
       "expected_composed_decision": "act",
       "signer_kids": [
         "ao-fixture-v0.3-composed-2026-06",
@@ -59,7 +59,7 @@
       "description": "AgentOracle approves, AgentTrust halts on skill — composed halts.",
       "payload_file": "payload-002.json",
       "jws_file": "jws-002.json",
-      "expected_canonical_sha256": "sha256-97c5e3572eb4c793de439977d15b8bc87033dbd39aabf98d092b97b023aadd9c",
+      "expected_canonical_sha256": "sha256-2ef352b967de01498512f1d77fe31dccc03119c8fb223c00f876eacfe4d8108d",
       "expected_composed_decision": "halt",
       "signer_kids": [
         "ao-fixture-v0.3-composed-2026-06",
@@ -73,7 +73,7 @@
       "description": "AgentTrust approves, AgentOracle refutes the claim — composed halts.",
       "payload_file": "payload-003.json",
       "jws_file": "jws-003.json",
-      "expected_canonical_sha256": "sha256-87012a5e89e4f0c137c189ac628d72f3a1f82e59ddcece9aa32cd17252f1a492",
+      "expected_canonical_sha256": "sha256-cd984e66efef7c0c2a6f1dc934a70effd338994f3c8bf8a41bb46b8e570c665b",
       "expected_composed_decision": "halt",
       "signer_kids": [
         "ao-fixture-v0.3-composed-2026-06",
@@ -87,7 +87,7 @@
       "description": "Happy path with a resolved mycelium_trail_id present.",
       "payload_file": "payload-004.json",
       "jws_file": "jws-004.json",
-      "expected_canonical_sha256": "sha256-fb413ef0897144144959072e481c893f53589ae985b4f77b87dbc5420ee1a5d3",
+      "expected_canonical_sha256": "sha256-91bb5a2f8996045b1d330383cf90979e6f6b5a71bcae66dc0b25c3ed8bd13b2c",
       "expected_composed_decision": "act",
       "signer_kids": [
         "ao-fixture-v0.3-composed-2026-06",
@@ -101,7 +101,7 @@
       "description": "Three-signer: AO act + AT act + Presidio PII_REDACTED screen (act) → composed act. screen_ref byte-matches argentum-core presidio-x402-003.",
       "payload_file": "payload-005.json",
       "jws_file": "jws-005.json",
-      "expected_canonical_sha256": "sha256-90bec800f087f25d06758ac40b3302b8d7c339c482190a50f13131b45e3730d2",
+      "expected_canonical_sha256": "sha256-494115ac5b45db3413501c60d77f1170d89cbe69f83a2d9460ab61d76da925af",
       "expected_composed_decision": "act",
       "signer_kids": [
         "ao-fixture-v0.3-composed-2026-06",
@@ -117,7 +117,7 @@
       "description": "Three-signer: AO act + AT act, but Presidio PII_BLOCKED screen (halt) is the decisive leg → composed halts. A payment both gates approved is stopped by the screen. screen_ref = presidio-x402-004.",
       "payload_file": "payload-006.json",
       "jws_file": "jws-006.json",
-      "expected_canonical_sha256": "sha256-e39ece74933c37d7102a8ac67ebfa2825a04d377c2368c8ba7dbeeefe9a0fcdd",
+      "expected_canonical_sha256": "sha256-576e6776d15b54c5bf05eb1a7ffb3db40d9bffe171d903b4604ea284d924e6fd",
       "expected_composed_decision": "halt",
       "signer_kids": [
         "ao-fixture-v0.3-composed-2026-06",
@@ -133,7 +133,7 @@
       "description": "Three-signer: AO act + AT act + Presidio clean-allow screen (act, no entity segment) → composed act. screen_ref = presidio-x402-005.",
       "payload_file": "payload-007.json",
       "jws_file": "jws-007.json",
-      "expected_canonical_sha256": "sha256-552f1ed68837130d7e9926d2717ebe62f7ec1437da0d783ee6c1ea182c7996cb",
+      "expected_canonical_sha256": "sha256-596b780a028e010af1cffcd70fa16b20c223a6c5c3dcef18d41c891563554493",
       "expected_composed_decision": "act",
       "signer_kids": [
         "ao-fixture-v0.3-composed-2026-06",

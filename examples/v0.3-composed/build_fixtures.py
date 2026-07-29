@@ -172,7 +172,13 @@ jwks_presidio = {"keys": [jwk_from_public(presidio_pk, PRESIDIO_KID)]}
 # ----------------------------------------------------------------------------
 
 AO_MAPPING_ID = "agentoracle-v0.3-2026-05-30"
-AO_MAPPING_HASH = "sha256-3b1f2d8e7a5c4b9f6e0a1d2c3b4a5e6f7c8d9e0a1b2c3d4e5f6a7b8c9d0e1f2a"
+# Content address of the published mapping document at
+# https://agentoracle.co/mappings/<sha256>.json (id-addressed alias:
+# /mappings/agentoracle-v0.3-2026-05-30.json). Rotated 2026-07-28 from
+# the earlier hand-written placeholder discovered by Michael Msebenzi
+# (draft-borthwick-msebenzi-environment-state author) via his cross-format
+# receipt verifier.
+AO_MAPPING_HASH = "sha256-0a78263976790df6e76cd9f3f441bf5a3b5c3a82e346b5aca43e49626881d7b0"
 AT_MAPPING_ID = "agenttrust-v0.3-2026-06-07"
 AT_MAPPING_HASH = "sha256-307db9faa364cfe149fb5120d0451175175de40d7433c44915bfec57acc16ec4"
 
