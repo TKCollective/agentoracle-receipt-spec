@@ -3,7 +3,7 @@
 **Status:** DRAFT FOR DISCUSSION, revision 1 — not yet normative. Comments welcome via issues/PRs.
 **Extends:** verification.v0.3 (and v0.3+composed). Additive at the canonical-bytes level: a valid v0.3 envelope's bytes are unchanged by this extension (see §5 and §2.1 for the rules that keep that true).
 **Author:** Joe Krausz, AgentOracle (TK Collective LLC)
-**Date:** 2026-07-28 (rev-1.1; rev-1 2026-07-26; original draft 2026-07-24)
+**Date:** 2026-07-29 (rev-1.2; rev-1.1 2026-07-28; rev-1 2026-07-26; original draft 2026-07-24)
 
 **rev-1 changelog.** This revision incorporates the findings of the draft's first hostile review, by **poteshniy (AgentTrust)** — the format's independent second implementer — across three review rounds (PR #5 and follow-ups), plus one determinism point absorbed from an adjacent multi-value discussion by **vstantch**. Findings are credited inline as [P-n] (poteshniy) and [V-1] (vstantch). Every change is listed here; the diff against the original draft is visible on PR #5.
 
@@ -20,6 +20,7 @@
 - [P-11] smaller items: `target_sha256` cites v0.3 `envelope_hash`; hash-after-decompression pinned; `ref` uniqueness MUST; completeness signal added (§2.2, §2.4, §3.1)
 - [V-1] `evidence_seals` ordering pinned (lexicographic by `ref`); v0.3 `evidence` ordering becomes a forward-looking SHOULD (§2.5)
 - [P-12] `test-clock` conformance domain added so shortfall/skewed-clock vectors are deterministic and offline (§3.1, §6.1) — resolution of the implementer's vector-construction question, rev-1.1
+- [P-13..18] six baseline under-determinations pinned (composed `evidence` array required with seals; string-entry form; `envelope_kind`/`receipt_version` values; top-level placement; snapshot-less seals accept-valid) — found by the independent implementer deriving the accept baseline from the field tables alone (§2.2, §2.6, §5), rev-1.2
 
 ---
 
@@ -40,6 +41,8 @@ v0.4 closes both gaps with two additive field groups: **sealed evidence** and **
 Verifiers MUST canonicalize the payload **exactly as received**. Tolerance of unrecognized members (§4.2) applies to *semantic processing only* — it MUST NOT cause a verifier to reconstruct, filter, or re-serialize the payload before canonicalization or signature verification. Signature verification operates over the canonical form of the received bytes; a verifier that strips unknown fields and then canonicalizes will compute different bytes and MUST be considered non-conformant. (This rule is what makes the extension additive at the bytes level: a v0.3 verifier meeting v0.4 fields — or a v0.4 verifier meeting a future v0.5 field such as a populated `fetch_attestation` — verifies the same bytes the issuer signed.)
 
 ### 2.2 The `evidence_seals` array
+
+In composed profiles, a payload carrying `evidence_seals` MUST also carry a top-level `evidence` array: the set of evidence references the seals correspond to and that `seals_complete` is evaluated against. Each entry of `evidence` is a string (URI or other identifier); each seal's `ref` MUST match an entry byte-exactly. Emitters SHOULD order `evidence` lexicographically by byte-wise UTF-8 comparison (mirroring §2.5); verifiers MUST NOT reject on `evidence` ordering. The v0.3 non-composed `evidence.snippets` object is a distinct legacy surface and is unchanged by this extension.
 
 A v0.4 payload MAY include `evidence_seals`, an array of seal objects, one per evidence item consulted. Each seal object contains:
 
@@ -84,7 +87,7 @@ The v0.3 `evidence` array's ordering was not pinned by v0.3 and this revision do
 
 ### 2.6 What sealing does and does not prove
 
-A seal proves the issuer committed, at signing time, to specific evidence bytes with a specific hash. With a resolvable snapshot, an examiner can read exactly what the verifier read. Sealing does **not** by itself prove the bytes genuinely originated from the referenced origin (that is `fetch_attestation`'s future work), and does not make the evidence true. State precisely what is proven, and no more.
+A seal proves the issuer committed, at signing time, to specific evidence bytes with a specific hash. With a resolvable snapshot, an examiner can read exactly what the verifier read. Sealing does **not** by itself prove the bytes genuinely originated from the referenced origin (that is `fetch_attestation`'s future work), and does not make the evidence true. State precisely what is proven, and no more. A seal without a `snapshot_ref` is accept-valid: its `content_sha256` is a commitment that becomes independently checkable when a snapshot or refetch matches.
 
 ## 3. Multi-Clock Anchors
 
@@ -153,6 +156,8 @@ Verifiers MUST ignore unrecognized members for semantic purposes — subject to 
 `typ` declares the profile: envelopes using v0.4 fields MUST declare `application/vnd.verification.v0.4+jws` (or `+composed+jws`).
 
 Check-set selection is **content-driven**: verifiers MUST apply the v0.4 checks of §2–§4 whenever any v0.4 field group (`evidence_seals`, `seals_complete`, `anchor_commitments`, `anchors`) is present — regardless of the declared `typ`. A v0.3-declared envelope carrying v0.4 fields MUST additionally be rejected as `typ_field_mismatch`: the mandatory checks of this extension are not issuer-selectable, and a declared-down envelope is treating them as opt-in. (The reject vector for this case is contributed by the independent implementer — same shape as at-r01.)
+
+Payloads using v0.4 fields MUST declare `envelope_kind` `verification.v0.4+composed` (composed profile) and `receipt_version` `0.4.0-composed`; a disagreement between `envelope_kind` and the declared typ is rejected as `typ_field_mismatch`. All v0.4 field groups (`evidence`, `evidence_seals`, `seals_complete`, `anchor_commitments`) and the `anchors` array position per §3.1 are payload/envelope top-level members.
 
 ## 6. Conformance (vector classes for rev-1)
 
