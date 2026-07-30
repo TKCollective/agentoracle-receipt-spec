@@ -1,7 +1,7 @@
 {
   "suite": "verification.v0.4+composed",
-  "version": "v0.4-draft-rev-1.2",
-  "status": "DRAFT — companion to draft-krausz-verification-state-01 v0.4 rev-1.2 (PR #5)",
+  "version": "v0.4-draft-rev-1.3",
+  "status": "DRAFT — companion to draft-krausz-verification-state-01 v0.4 rev-1.3 (PR #5)",
   "spec": "../../drafts/verification-v0.4.md",
   "envelope_kind": "verification.v0.4+composed",
   "jws_typ": "application/vnd.verification.v0.4+composed+jws",
@@ -46,5 +46,17 @@
       ]
     }
   ],
-  "reject_vectors": []
+  "reject_vectors": [],
+  "status_vectors": [],
+  "status_vectors_schema": {
+    "_note": "STATUS-domain conformance vectors per §6: core validity holds; adjudication follows §3.5 vocabulary. Verifiers MUST NOT fold anchoring status into core reject. Populated in rev-1.3+ conformance suite.",
+    "fields": {
+      "id": "stable identifier, e.g. v04-status-commitment-shortfall-001",
+      "envelope_file": "relative path to signed envelope JSON",
+      "expected_core_validity": "boolean — does the composed envelope pass core validity (signatures/canonicalization/seals)?",
+      "expected_anchor_status": "one of: meets_commitment | short_of_commitment | not_yet_anchored | indeterminate_pending",
+      "signer_kids": "list[str] — JWKS kids that signed the envelope, in composition order",
+      "notes": "human-readable disposition and adjudication reference to §3.5"
+    }
+  }
 }

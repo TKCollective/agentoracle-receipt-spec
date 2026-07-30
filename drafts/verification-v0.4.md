@@ -189,8 +189,10 @@ time; it is marked time-pinned and expires with its certificate chain, and is
 not part of the normative reject set.
 
 **Accept:** sealed set matching evidence (ordered per §2.5) · `seals_complete` satisfied · single anchor of each type · batched anchor with valid §3.3 inclusion proof · commitment met within `anchor_by` (proof-derived readings).
-**Reject:** `typ_field_mismatch` (typ-downgrade) · `evidence_seal_unmatched` · `evidence_seal_incomplete` · null-instead-of-absent · `evidence_seals` mis-ordered · inclusion proof recomputing to wrong root · rfc3161 token over wrong hash · commitment shortfall past deadline.
-**Extended/status:** snapshot `verified` / `contradicted` / `could_not_check` (with resolvability parameter) · `meets_commitment` / `short_of_commitment` / `not_yet_anchored` / `indeterminate_pending` · skewed-verifier-clock case.
+**Reject:** `typ_field_mismatch` (typ-downgrade) · `evidence_seal_unmatched` · `evidence_seal_incomplete` · `null_field_present` (null-instead-of-absent, §4.1) · `evidence_seals_out_of_order` (§2.5 violation) · inclusion proof recomputing to wrong root · rfc3161 token over wrong hash.
+**Extended/status:** snapshot `verified` / `contradicted` / `could_not_check` (with resolvability parameter) · `meets_commitment` / `short_of_commitment` / `not_yet_anchored` / `indeterminate_pending` · commitment shortfall past deadline · skewed-verifier-clock case.
+
+Commitment-shortfall and skewed-verifier-clock cases are STATUS-domain conformance: core validity holds and adjudication proceeds per §3.5 vocabulary — verifiers MUST NOT fold anchoring status into core reject.
 The reject set for typ-downgrade, null-vs-absent, seal ordering, commitment shortfall, and the skewed-clock case is produced independently by the second implementer with byte-identical Node output, alongside the reference Python vectors — two parties, one byte-level truth, before this text goes normative.
 
 ## 7. Compatibility & rollout
