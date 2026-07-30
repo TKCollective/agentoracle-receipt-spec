@@ -1,0 +1,50 @@
+{
+  "suite": "verification.v0.4+composed",
+  "version": "v0.4-draft-rev-1.2",
+  "status": "DRAFT — companion to draft-krausz-verification-state-01 v0.4 rev-1.2 (PR #5)",
+  "spec": "../../drafts/verification-v0.4.md",
+  "envelope_kind": "verification.v0.4+composed",
+  "jws_typ": "application/vnd.verification.v0.4+composed+jws",
+  "signature_algorithm": "EdDSA (Ed25519)",
+  "canonicalization": "RFC 8785 (JCS)",
+  "issuers": [
+    {
+      "role": "v_gate",
+      "issuer": "agentoracle",
+      "jwks_file": "../v0.3-composed/jwks-agentoracle.json",
+      "kid": "ao-fixture-v0.3-composed-2026-06"
+    },
+    {
+      "role": "v_gate_skill",
+      "issuer": "agenttrust",
+      "jwks_file": "../v0.3-composed/jwks-agenttrust.json",
+      "kid": "at-fixture-v0.3-composed-2026-06"
+    }
+  ],
+  "accept_vectors": [
+    {
+      "id": "v04-accept-001",
+      "description": "First v0.4 accept vector — ratified baseline from PR #5 discussion; AO+AT composed envelope with all v0.4 field groups (evidence, evidence_seals, seals_complete, anchor_commitments) per rev-1.2 pins P-13..18. AT leg hand-signed by @poteshniy from AgentTrust; byte-matched deterministically by build_accept_001.py via the fixture-suite seed convention. Three canonicalizations (RFC 7515 header b64u, RFC 8785 JCS payload, compact-JSON protected header) and two independent signature verifications behind it.",
+      "envelope_file": "v04-accept-001.json",
+      "expected_canonical_sha256": "sha256-0664f60ee35011ba8c5df2a3cb8a5ef0e0d9424d679a2cf2a19869411a456b90",
+      "expected_composed_decision": "act",
+      "signer_kids": [
+        "ao-fixture-v0.3-composed-2026-06",
+        "at-fixture-v0.3-composed-2026-06"
+      ],
+      "envelope_kind": "verification.v0.4+composed",
+      "receipt_version": "0.4.0-composed",
+      "v04_fields_present": [
+        "evidence",
+        "evidence_seals",
+        "seals_complete",
+        "anchor_commitments"
+      ],
+      "notes": [
+        "Baseline converged byte-identical 2026-07-29 PM between Claude's Python and Pote's Node implementations (payload = 1823 bytes, sha256 begins 0664f60e…).",
+        "AT signature fWTMae9shEBnV_EqWSCSzFfHXxRPfj3bnIyEcCp_sctOzkOL5yQXiEpLRtcfW1dK4qbn13svlDGwkB4jXM6xCg hand-signed by AgentTrust from the seed-derived at-fixture key; verified byte-identical by build_accept_001.py's deterministic regeneration path (Ed25519 is deterministic over the same seed + signing input)."
+      ]
+    }
+  ],
+  "reject_vectors": []
+}
