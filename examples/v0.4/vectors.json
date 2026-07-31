@@ -1,10 +1,26 @@
 {
   "suite": "verification.v0.4+composed",
-  "version": "v0.4-draft-rev-1.3",
-  "status": "DRAFT — companion to draft-krausz-verification-state-01 v0.4 rev-1.3 (PR #5)",
+  "version": "v0.4-draft-rev-1.4",
+  "status": "DRAFT — companion to draft-krausz-verification-state-01 v0.4 rev-1.4 (PR #5) — vector-keying design ruled",
   "spec": "../../drafts/verification-v0.4.md",
   "envelope_kind": "verification.v0.4+composed",
   "jws_typ": "application/vnd.verification.v0.4+composed+jws",
+  "vector_keying_rules": {
+    "_note": "Design ruling for how conformance vectors are keyed, deduplicated, and integrity-checked. Applies to accept_vectors[], reject_vectors[], and status_vectors[].",
+    "primary_key": "id — vectors key on id, not envelope_sha256. Two vectors with different ids may share the same envelope (see intentional_collisions below).",
+    "envelope_sha256": "sha256 of the composed envelope JSON as distributed on disk. Same envelope bytes across separability-family vectors will share the same envelope_sha256; this is by design, not a duplicate.",
+    "vector_sha256": "sha256 over the JCS-canonical full wrapper (envelope + anchors[] + conformance_mode + expected_* fields). This is the distribution-integrity checksum for the vector as a whole — changes if any expected field or anchor state changes even when the envelope itself is byte-identical. Verifiers SHOULD recompute vector_sha256 during suite ingestion; mismatches indicate the vector was mutated in transit.",
+    "intentional_collisions": {
+      "_note": "Envelope_sha256 collisions between the following three vectors are INTENTIONAL. The composite check MUST assert the three envelopes are byte-identical — this is separability made executable (same envelope, three different adjudication outcomes depending on anchor state and clock skew).",
+      "vectors": [
+        "v04-accept-001 (baseline: core valid, anchoring meets_commitment, no clock skew)",
+        "v04-status-test_clock_in_production (same envelope; core valid; test-clock header flagged as production violation; anchor status independent)",
+        "v04-status-skewed_clock_adjudication (same envelope; core valid; verifier-clock skew triggers indeterminate_pending anchor status; core validity preserved per §6 separability rule)"
+      ],
+      "composite_check_assertion": "sha256(envelope(accept-001)) == sha256(envelope(test_clock_in_production)) == sha256(envelope(skewed_clock_adjudication))"
+    },
+    "why": "Separability of core validity from anchor status (§6 clarifying sentence, rev-1.3) is a spec claim. Making three vectors carry byte-identical envelopes but yield three different adjudication outcomes turns the claim into an executable property: if a verifier folds anchor status into core reject, the three vectors will not all pass their respective expected_* fields. The suite tests the property directly."
+  },
   "signature_algorithm": "EdDSA (Ed25519)",
   "canonicalization": "RFC 8785 (JCS)",
   "issuers": [
@@ -49,10 +65,13 @@
   "reject_vectors": [],
   "status_vectors": [],
   "status_vectors_schema": {
-    "_note": "STATUS-domain conformance vectors per §6: core validity holds; adjudication follows §3.5 vocabulary. Verifiers MUST NOT fold anchoring status into core reject. Populated in rev-1.3+ conformance suite.",
+    "_note": "STATUS-domain conformance vectors per §6: core validity holds; adjudication follows §3.5 vocabulary. Verifiers MUST NOT fold anchoring status into core reject. Populated in rev-1.3+ conformance suite. Keying and integrity rules per vector_keying_rules (above).",
     "fields": {
-      "id": "stable identifier, e.g. v04-status-commitment-shortfall-001",
-      "envelope_file": "relative path to signed envelope JSON",
+      "id": "stable identifier, e.g. v04-status-commitment-shortfall-001. PRIMARY KEY.",
+      "envelope_file": "relative path to signed envelope JSON. May be shared across separability-family vectors (intentional envelope_sha256 collisions per vector_keying_rules).",
+      "envelope_sha256": "sha256 of the composed envelope JSON. May collide across separability-family vectors by design.",
+      "vector_sha256": "sha256 over the JCS-canonical full wrapper (envelope + anchors[] + conformance_mode + expected fields). Distribution-integrity checksum; unique per vector even when envelopes collide.",
+      "conformance_mode": "one of: strict | permissive | test_clock_in_production | skewed_clock_adjudication — the adjudication context under which this vector is tested.",
       "expected_core_validity": "boolean — does the composed envelope pass core validity (signatures/canonicalization/seals)?",
       "expected_anchor_status": "one of: meets_commitment | short_of_commitment | not_yet_anchored | indeterminate_pending",
       "signer_kids": "list[str] — JWKS kids that signed the envelope, in composition order",
