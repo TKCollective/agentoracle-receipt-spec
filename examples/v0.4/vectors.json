@@ -1,7 +1,7 @@
 {
   "suite": "verification.v0.4+composed",
-  "version": "v0.4-draft-rev-1.4",
-  "status": "DRAFT — companion to draft-krausz-verification-state-01 v0.4 rev-1.4 (PR #5) — vector-keying design ruled",
+  "version": "v0.4-draft-rev-1.5",
+  "status": "DRAFT — companion to draft-krausz-verification-state-01 v0.4 rev-1.5 (PR #5) — vector_sha256 wrapper construction pinned",
   "spec": "../../drafts/verification-v0.4.md",
   "envelope_kind": "verification.v0.4+composed",
   "jws_typ": "application/vnd.verification.v0.4+composed+jws",
@@ -9,7 +9,32 @@
     "_note": "Design ruling for how conformance vectors are keyed, deduplicated, and integrity-checked. Applies to accept_vectors[], reject_vectors[], and status_vectors[].",
     "primary_key": "id — vectors key on id, not envelope_sha256. Two vectors with different ids may share the same envelope (see intentional_collisions below).",
     "envelope_sha256": "sha256 of the composed envelope JSON as distributed on disk. Same envelope bytes across separability-family vectors will share the same envelope_sha256; this is by design, not a duplicate.",
-    "vector_sha256": "sha256 over the JCS-canonical full wrapper (envelope + anchors[] + conformance_mode + expected_* fields). This is the distribution-integrity checksum for the vector as a whole — changes if any expected field or anchor state changes even when the envelope itself is byte-identical. Verifiers SHOULD recompute vector_sha256 during suite ingestion; mismatches indicate the vector was mutated in transit.",
+    "vector_sha256": {
+      "_note": "Distribution-integrity checksum for a vector as a whole. Unique per vector even when envelopes collide (see intentional_collisions).",
+      "construction": "sha256 over the JCS-canonical serialization of the following wrapper object:",
+      "wrapper_fields": [
+        "id",
+        "envelope_sha256",
+        "anchors",
+        "conformance_mode",
+        "expected_core_validity",
+        "expected_failure_reason",
+        "expected_anchor_status"
+      ],
+      "field_semantics": {
+        "id": "the vector's stable identifier (primary key)",
+        "envelope_sha256": "sha256 hex of the composed envelope JSON as distributed on disk — envelope is bound BY HASH here, not by value",
+        "anchors": "the anchors[] array as it appears in the vector entry",
+        "conformance_mode": "strict | permissive | test_clock_in_production | skewed_clock_adjudication",
+        "expected_core_validity": "boolean — present only on vectors that assert this axis",
+        "expected_failure_reason": "canonical reject enum string — present only on reject_vectors[]",
+        "expected_anchor_status": "canonical status enum string — present only on status_vectors[]"
+      },
+      "envelope_binding_rationale": "The envelope is referenced BY HASH (envelope_sha256), NOT by embedding its bytes inside the wrapper. Rationale: embedding pretty-printed envelope bytes inside a JCS wrapper would create two byte-forms of the envelope (the pretty-printed on-disk copy and the JCS-normalized in-wrapper copy) with different sha256 values, breaking the hash-chain property. Binding by hash means any envelope change ripples through envelope_sha256 into vector_sha256 with a single well-defined dependency.",
+      "omission_rule": "Absent expected_* fields MUST be OMITTED from the wrapper before JCS serialization, NEVER set to null. This is §4.1 (null_field_present is a reject in the wire format) applied to the manifest itself — the wrapper obeys the same null-vs-absent discipline as the envelopes it references.",
+      "ingestion": "Verifiers SHOULD recompute vector_sha256 during suite ingestion; mismatches indicate the vector was mutated in transit or the wrapper construction disagrees with this spec.",
+      "reference_implementation": "Both verify.mjs and verify.py MUST implement this construction identically. Composite check output MUST report vector_sha256 per vector alongside the byte-identity assertion across the three separability-family envelopes."
+    },
     "intentional_collisions": {
       "_note": "Envelope_sha256 collisions between the following three vectors are INTENTIONAL. The composite check MUST assert the three envelopes are byte-identical — this is separability made executable (same envelope, three different adjudication outcomes depending on anchor state and clock skew).",
       "vectors": [
