@@ -1,7 +1,7 @@
 {
   "suite": "verification.v0.4+composed",
-  "version": "v0.4-draft-rev-1.5",
-  "status": "DRAFT — companion to draft-krausz-verification-state-01 v0.4 rev-1.5 (PR #5) — vector_sha256 wrapper construction pinned",
+  "version": "v0.4-draft-rev-1.6",
+  "status": "DRAFT — companion to draft-krausz-verification-state-01 v0.4 rev-1.6 (PR #5) — reject + status suite landed (Pote PR #6)",
   "spec": "../../drafts/verification-v0.4.md",
   "envelope_kind": "verification.v0.4+composed",
   "jws_typ": "application/vnd.verification.v0.4+composed+jws",
@@ -84,11 +84,92 @@
       "notes": [
         "Baseline converged byte-identical 2026-07-29 PM between Claude's Python and Pote's Node implementations (payload = 1823 bytes, sha256 begins 0664f60e…).",
         "AT signature fWTMae9shEBnV_EqWSCSzFfHXxRPfj3bnIyEcCp_sctOzkOL5yQXiEpLRtcfW1dK4qbn13svlDGwkB4jXM6xCg hand-signed by AgentTrust from the seed-derived at-fixture key; verified byte-identical by build_accept_001.py's deterministic regeneration path (Ed25519 is deterministic over the same seed + signing input)."
+      ],
+      "envelope_sha256": "a277c63a32589bd37775c4a4647327ff61b82ac95d70b1c8bf259f00f5d3bcaf"
+    }
+  ],
+  "reject_vectors": [
+    {
+      "id": "v04-reject-typ_field_mismatch",
+      "description": "v0.4 field groups present but AT leg protected header declares v0.3 typ. Per §5 content-driven check-set selection, a v0.3-declared envelope carrying v0.4 fields MUST be rejected.",
+      "envelope_file": "v04-reject-typ_field_mismatch.json",
+      "envelope_sha256": "3b5d4ec5ede550ca3ca6aee8809779dbc1d1aba1ea3e05d0308d8cc23083d83c",
+      "vector_sha256": "629aff1d4b447ea93dcff5a4762dacfef6bb9fa47e274b67efbb2e4dc7687819",
+      "expected_failure_reason": "typ_field_mismatch",
+      "signer_kids": [
+        "ao-fixture-v0.3-composed-2026-06",
+        "at-fixture-v0.3-composed-2026-06"
+      ]
+    },
+    {
+      "id": "v04-reject-null_field_present",
+      "description": "Optional field content_length serialized as null instead of omitted. §4.1: optional fields MUST be omitted, never null.",
+      "envelope_file": "v04-reject-null_field_present.json",
+      "envelope_sha256": "5a80111d40dc87dcbcbf84b286c72c605eaf1c2ad12ac235018199bdc18f9732",
+      "vector_sha256": "6f2896d1c09097edac265b35baec398e7d43382551db8ce87fb5154e2fe0cc90",
+      "expected_failure_reason": "null_field_present",
+      "signer_kids": [
+        "ao-fixture-v0.3-composed-2026-06",
+        "at-fixture-v0.3-composed-2026-06"
+      ]
+    },
+    {
+      "id": "v04-reject-evidence_seals_out_of_order",
+      "description": "evidence_seals not ordered lexicographically by ref. §2.5: entries MUST be ordered lexicographically by ref (byte-wise UTF-8).",
+      "envelope_file": "v04-reject-evidence_seals_out_of_order.json",
+      "envelope_sha256": "de67637c672704731440fea8ac03a9754d13a1920f54aef6bc931cf96809cb86",
+      "vector_sha256": "39b134a54579f0d8871470d2cfd419f02f9276c97c1c01b4048ff7a5b37d82da",
+      "expected_failure_reason": "evidence_seals_out_of_order",
+      "signer_kids": [
+        "ao-fixture-v0.3-composed-2026-06",
+        "at-fixture-v0.3-composed-2026-06"
       ]
     }
   ],
-  "reject_vectors": [],
-  "status_vectors": [],
+  "status_vectors": [
+    {
+      "id": "v04-status-test_clock_in_production",
+      "envelope_file": "v04-status-test_clock_in_production.json",
+      "envelope_sha256": "a277c63a32589bd37775c4a4647327ff61b82ac95d70b1c8bf259f00f5d3bcaf",
+      "vector_sha256": "2e7b6001d6bb598f902a5dffb249fc96a4bb2c3c101a676a10f4203dcdcb0f3e",
+      "conformance_mode": "test_clock_in_production",
+      "expected_core_validity": true,
+      "expected_anchor_status": "indeterminate_pending",
+      "signer_kids": [
+        "ao-fixture-v0.3-composed-2026-06",
+        "at-fixture-v0.3-composed-2026-06"
+      ],
+      "notes": "Same envelope as accept-001. test-clock anchor presented to a production verifier: core validity preserved, anchor status resolves indeterminate_pending. Verifiers MUST NOT fold into core reject (§6 separability)."
+    },
+    {
+      "id": "v04-status-short_of_commitment",
+      "envelope_file": "v04-status-short_of_commitment.json",
+      "envelope_sha256": "e7ed1b9d3c5194196dd6a623a275eff9c95f4c89b7b4c9c1b592ebc5b2018e7e",
+      "vector_sha256": "73af482134dd26abdf2783a2efc606a594786e68c7f8884cdb18e0abd31cc7d7",
+      "conformance_mode": "strict",
+      "expected_core_validity": true,
+      "expected_anchor_status": "short_of_commitment",
+      "signer_kids": [
+        "ao-fixture-v0.3-composed-2026-06",
+        "at-fixture-v0.3-composed-2026-06"
+      ],
+      "notes": "anchor_commitments min_count=2 over [test-clock, evm-tx], one verified anchor present, past anchor_by → short_of_commitment; core valid, reported alongside not folded (§3.5)."
+    },
+    {
+      "id": "v04-status-skewed_clock_adjudication",
+      "envelope_file": "v04-status-skewed_clock_adjudication.json",
+      "envelope_sha256": "a277c63a32589bd37775c4a4647327ff61b82ac95d70b1c8bf259f00f5d3bcaf",
+      "vector_sha256": "8ef853c9309a5438292c015cb558cef456b6032058dea1c67c09bc93a23685de",
+      "conformance_mode": "skewed_clock_adjudication",
+      "expected_core_validity": true,
+      "expected_anchor_status": "indeterminate_pending",
+      "signer_kids": [
+        "ao-fixture-v0.3-composed-2026-06",
+        "at-fixture-v0.3-composed-2026-06"
+      ],
+      "notes": "Same envelope as accept-001. Verifier-clock skew: adjudication uses proof-derived test-clock reading, not verifier wall-clock; resolves indeterminate_pending. Core validity preserved (§6 separability)."
+    }
+  ],
   "status_vectors_schema": {
     "_note": "STATUS-domain conformance vectors per §6: core validity holds; adjudication follows §3.5 vocabulary. Verifiers MUST NOT fold anchoring status into core reject. Populated in rev-1.3+ conformance suite. Keying and integrity rules per vector_keying_rules (above).",
     "fields": {
