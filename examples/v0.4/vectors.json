@@ -1,7 +1,7 @@
 {
   "suite": "verification.v0.4+composed",
-  "version": "v0.4-draft-rev-1.6",
-  "status": "DRAFT — companion to draft-krausz-verification-state-01 v0.4 rev-1.6 (PR #5) — reject + status suite landed (Pote PR #6)",
+  "version": "v0.4-draft-rev-1.8",
+  "status": "DRAFT — companion to draft-krausz-verification-state-01 v0.4 rev-1.8 (PR #5) — anchors publication rule (root-caused divergence)",
   "spec": "../../drafts/verification-v0.4.md",
   "envelope_kind": "verification.v0.4+composed",
   "jws_typ": "application/vnd.verification.v0.4+composed+jws",
@@ -32,8 +32,14 @@
       },
       "envelope_binding_rationale": "The envelope is referenced BY HASH (envelope_sha256), NOT by embedding its bytes inside the wrapper. Rationale: embedding pretty-printed envelope bytes inside a JCS wrapper would create two byte-forms of the envelope (the pretty-printed on-disk copy and the JCS-normalized in-wrapper copy) with different sha256 values, breaking the hash-chain property. Binding by hash means any envelope change ripples through envelope_sha256 into vector_sha256 with a single well-defined dependency.",
       "omission_rule": "Absent expected_* fields MUST be OMITTED from the wrapper before JCS serialization, NEVER set to null. This is §4.1 (null_field_present is a reject in the wire format) applied to the manifest itself — the wrapper obeys the same null-vs-absent discipline as the envelopes it references.",
-      "ingestion": "Verifiers SHOULD recompute vector_sha256 during suite ingestion; mismatches indicate the vector was mutated in transit or the wrapper construction disagrees with this spec.",
-      "reference_implementation": "Both verify.mjs and verify.py MUST implement this construction identically. Composite check output MUST report vector_sha256 per vector alongside the byte-identity assertion across the three separability-family envelopes."
+      "ingestion": "Verifiers SHOULD recompute vector_sha256 during suite ingestion; mismatches indicate the vector was mutated in transit, the wrapper construction disagrees with this spec, OR the manifest is missing per-vector adjudication inputs (see anchors_publication_rule).",
+      "reference_implementation": "Both verify.mjs and verify.py MUST implement this construction identically. Composite check output MUST report vector_sha256 per vector alongside the byte-identity assertion across the three separability-family envelopes.",
+      "anchors_publication_rule": {
+        "_note": "Manifest is the single published home of adjudication inputs. Nothing a conformance runner needs to reproduce vector_sha256 may live off-tree.",
+        "status_vectors_MUST_carry_anchors_verbatim": "status_vectors[] entries MUST include an `anchors` field carrying the anchors verbatim as they were presented to the adjudicator when the declared vector_sha256 was computed. Because status envelopes are byte-identical to their accept-vector baseline by design (§6 separability made executable), the anchors are the ONLY per-vector adjudication input that distinguishes them — they cannot be reconstructed from the envelope bytes alone.",
+        "accept_and_reject_vectors_OMIT_anchors": "accept_vectors[] and reject_vectors[] entries MUST OMIT the `anchors` field. Not [], not null — absent. Their expected outcome is fully determined by the envelope + expected_* fields; no adjudication input beyond that exists. This is §4.1 (null_field_present is a reject in the wire format) applied to the manifest itself.",
+        "why_reject_wrappers_already_matched": "The rev-1.5 vector_sha256 recompute matched declared values on reject vectors byte-for-byte because the reject wrapper has no `anchors` field to disagree about — anchors is omitted from both the published entry and any reasonable reconstruction. Status wrappers diverged because Pote's generator included anchors[] content that was never published to the tree; the reconstruction was correct against the published entries, but the entries were incomplete."
+      }
     },
     "intentional_collisions": {
       "_note": "Envelope_sha256 collisions between the following three vectors are INTENTIONAL. The composite check MUST assert the three envelopes are byte-identical — this is separability made executable (same envelope, three different adjudication outcomes depending on anchor state and clock skew).",
