@@ -23,7 +23,7 @@
 - [P-13..18] six baseline under-determinations pinned (composed `evidence` array required with seals; string-entry form; `envelope_kind`/`receipt_version` values; top-level placement; snapshot-less seals accept-valid) — found by the independent implementer deriving the accept baseline from the field tables alone (§2.2, §2.6, §6), rev-1.2
 
 
-**rev-2 changelog (2026-08-06).** `layer_trace` field group added per receipt-spec#7 consensus (§4). [Y-1] layer-boundary definition and [Y-2] chain-to-input correction credited to @yun520-1 (HeartFlow); production `src/gate.js` surfaced both.
+**rev-2 changelog (2026-08-06).** `layer_trace` field group added per receipt-spec#7 consensus (§4). [Y-1] layer-boundary definition and [Y-2] chain-to-input correction credited to @yun520-1 (HeartFlow); production `src/gate.js` surfaced both. [Y-3] divergence diagnostics (§4.3) credited to @yun520-1; production `src/core/verifier-grant.js` surfaced it.
 
 ---
 
@@ -175,6 +175,8 @@ The two modes MAY appear in the same trace, keyed per layer, and MUST NOT be mix
 ### 4.3 Compose, don't compete
 
 A verifier reading `layer_trace` performs two independent checks that must agree: **rerun** proves the `recomputable` layers produce the observed verdict, and **signature** proves the verdict was sealed at issue. Divergence between them is itself a detectable failure class ("rerun disagrees with sealed"), which neither mode catches alone. Verifiers MUST NOT fold this divergence into core envelope validity — signature verification remains authoritative for byte-integrity — but SHOULD report it as a distinct status.
+
+**What divergence indicates [Y-3].** A rerun/sealed split is not only detectable but diagnostic: it narrows the cause to post-hoc tampering (the sealed bytes no longer match what the declared rules produce) or runtime drift (the rules themselves moved since issuance). Verifiers SHOULD report which layers diverged, since the set of diverging layers is what distinguishes the two. Credit: @yun520-1 (HeartFlow); the integrity chain in production `src/core/verifier-grant.js` is the motivating implementation.
 
 ### 4.4 Chain-to-input, not per-layer [Y-2]
 
