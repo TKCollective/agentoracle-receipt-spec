@@ -1,0 +1,86 @@
+{
+  "receipt_version": "0.4.0-composed",
+  "envelope_kind": "verification.v0.4+composed",
+  "subject": {
+    "claim_hash": "sha256-f07d1d0827f6460f792c92a476603e91d952655f2cb417f7e7d962dfc836b115",
+    "skill_hash": "sha256-f0f6bf96eebf4a4e19b6c4f9ddafd38b2f45e0ea9f285a5e05979b50643a5e6c"
+  },
+  "v_gate": {
+    "issuer": "agentoracle",
+    "verdict": "act",
+    "v_confidence": 0.87,
+    "v_gate_threshold": 0.7,
+    "v_adversarial_result": "resilient",
+    "v_recommendation": "confident_supported",
+    "mapping_id": "agentoracle-v0.3-2026-05-30",
+    "v_gate_mapping_hash": "sha256-0a78263976790df6e76cd9f3f441bf5a3b5c3a82e346b5aca43e49626881d7b0"
+  },
+  "v_gate_skill": {
+    "issuer": "agenttrust",
+    "verdict": "act",
+    "skill_results": [
+      {
+        "name": "x402.settle",
+        "status": "clean"
+      }
+    ],
+    "mcp_results": [],
+    "endpoint_results": [],
+    "mapping_id": "agenttrust-v0.3-2026-06-07",
+    "v_gate_mapping_hash": "sha256-307db9faa364cfe149fb5120d0451175175de40d7433c44915bfec57acc16ec4"
+  },
+  "composed_decision": "act",
+  "composed_decision_rule": "AND_PRESENT",
+  "signature_meta": {
+    "agentoracle_jwks_url": "https://agentoracle.co/.well-known/jwks.json",
+    "agenttrust_jwks_url": "https://agenttrust.uk/.well-known/jwks.json",
+    "presidio_jwks_url": "https://screen.presidio-group.eu/.well-known/jwks.json",
+    "argentum_jwks_url": "https://argentum-api.rgiskard.xyz/.well-known/jwks.json",
+    "signing_trust_ref": "signing-trust-ref-v1:str-003"
+  },
+  "screen_ref": {
+    "issuer": "presidio",
+    "verdict": "act",
+    "screen": {
+      "agent_id": "did:presidio:x402:agent-7f3a9c",
+      "action_type": "pii_screen",
+      "scope": "presidio:x402.screen:PII_REDACTED:EMAIL_ADDRESS,US_SSN",
+      "timestamp": "2026-06-20T17:45:00.000Z"
+    },
+    "action_ref": "c832ef8610c6989f8c6f5cea51ac019b8ac9860e389110079a895e67595950a2",
+    "mapping_id": "presidio-x402-screen-v0.1-2026-06"
+  },
+  "delegation_chain_ref": {
+    "issuer": "argentum",
+    "verdict": "act",
+    "chain": {
+      "chain_id": "chain-x402-settle-r06",
+      "hops": [
+        {
+          "delegatee": "did:x402:fixture:broker-agent",
+          "delegator": "did:x402:fixture:treasury-root",
+          "delegation_ref": "97aa465b9ee7d40c639cd2d7f62364ddb46b2f9fde8dd6c9944fae8dd13ef294",
+          "scope": "x402:*"
+        },
+        {
+          "delegatee": "did:x402:fixture:settlement-agent",
+          "delegator": "did:x402:fixture:rogue-agent",
+          "delegation_ref": "db00f778709fbcad94ab0605f924dc858894987bf04ab72631b22538f9abbf6a",
+          "scope": "x402:payment"
+        }
+      ],
+      "leaf_action_ref": "e3deae36972babe9dfd4d349c4c689bc8d3a911d8c1c43b78c23b83bb7882d26",
+      "root_delegator": "did:x402:fixture:treasury-root",
+      "scope": "x402:*",
+      "version": "delegation-chain-ref-v1"
+    },
+    "leaf_preimage": {
+      "agent_id": "did:x402:fixture:settlement-agent",
+      "action_type": "payment.settle",
+      "scope": "x402:payment",
+      "timestamp": "2026-08-24T12:00:00.000Z"
+    },
+    "delegation_chain_ref": "717874ceefa65271e41401e64e858b87190ddac88bf952f157b0f23a1725714f",
+    "mapping_id": "argentum-delegation-chain-v0.1-2026-08"
+  }
+}

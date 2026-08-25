@@ -1,0 +1,90 @@
+{
+  "suite": "verification.v0.4+composed",
+  "version": "v0.4-composed-phase-3",
+  "spec": "../../README.md (Mycelium Trails section) + IETF draft-krausz-verification-state-01 + signing-trust-ref-v1 + action-ref-v1 (argentum-core action-ref.md @16dbc92) + delegation-chain-ref-v1 (argentum-core delegation-chain-ref.md @16e140a)",
+  "phase": 3,
+  "phase_note": "Phase 3 adds Argentum (delegation_chain_ref) as an additive fourth sibling pointer + signature on top of the byte-stable v0.3-composed suite, which is untouched: every v0.3 fixture, key, and manifest entry is unchanged byte-for-byte and this suite ships in its own directory. delegation_chain_ref is a delegation-chain-ref-v1 content address over a multi-hop authority chain; its block carries the chain artifact and the leaf preimage so verifiers recompute the chain ref and the leaf action_ref rather than trust them. It answers authority provenance (was the chain from root delegator to leaf agent valid) and never action identity; per delegation-chain-ref.md invariant 4 it is envelope-only and never enters an action_ref preimage. The primitive and its four invariants (chain continuity, root anchoring, leaf anchoring, monotonic scope narrowing) are taken from giskard09/argentum-core at 16e140a, unmodified and not renamed. Scope is three vectors: comp-008 accepts a narrowing chain, comp-r05 rejects a widening hop, comp-r06 rejects a continuity break. AND_PRESENT is unchanged and now folds the chain verdict.",
+  "composition_rule": "AND_PRESENT",
+  "composition_rule_note": "composed_decision = AND across all present sibling-pointer verdicts. Absent siblings do not contribute; any present-and-halt collapses the composed decision to halt.",
+  "envelope_kind": "verification.v0.4+composed",
+  "jws_typ": "application/vnd.verification.v0.4+composed+jws",
+  "signature_algorithm": "EdDSA (Ed25519)",
+  "canonicalization": "RFC 8785 (JCS)",
+  "issuers": [
+    {
+      "role": "v_gate",
+      "issuer": "agentoracle",
+      "jwks_file": "jwks-agentoracle.json",
+      "jwks_url": "https://agentoracle.co/.well-known/jwks.json",
+      "kid": "ao-fixture-v0.4-composed-2026-08",
+      "mapping_id": "agentoracle-v0.3-2026-05-30",
+      "mapping_hash": "sha256-0a78263976790df6e76cd9f3f441bf5a3b5c3a82e346b5aca43e49626881d7b0"
+    },
+    {
+      "role": "v_gate_skill",
+      "issuer": "agenttrust",
+      "jwks_file": "jwks-agenttrust.json",
+      "jwks_url": "https://agenttrust.uk/.well-known/jwks.json",
+      "kid": "at-fixture-v0.4-composed-2026-08",
+      "mapping_id": "agenttrust-v0.3-2026-06-07",
+      "mapping_hash": "sha256-307db9faa364cfe149fb5120d0451175175de40d7433c44915bfec57acc16ec4"
+    },
+    {
+      "role": "screen_ref",
+      "issuer": "presidio",
+      "jwks_file": "jwks-presidio.json",
+      "jwks_url": "https://screen.presidio-group.eu/.well-known/jwks.json",
+      "kid": "presidio-fixture-v0.4-composed-2026-08",
+      "mapping_id": "presidio-x402-screen-v0.1-2026-06",
+      "spec": "argentum-core action-ref.md @16dbc92 (action-ref-v1)"
+    },
+    {
+      "role": "delegation_chain_ref",
+      "issuer": "argentum",
+      "jwks_file": "jwks-argentum.json",
+      "jwks_url": "https://argentum-api.rgiskard.xyz/.well-known/jwks.json",
+      "kid": "argentum-fixture-v0.4-composed-2026-08",
+      "mapping_id": "argentum-delegation-chain-v0.1-2026-08",
+      "spec": "argentum-core delegation-chain-ref.md @16e140a (delegation-chain-ref-v1)"
+    }
+  ],
+  "accept_vectors": [
+    {
+      "id": "comp-008",
+      "description": "Four-signer: AO act + AT act + Presidio act + Argentum act over a valid two-hop delegation chain (x402:* narrows to x402:payment). Root anchoring holds and leaf_action_ref recomputes from leaf_preimage, so composed act.",
+      "payload_file": "payload-008.json",
+      "jws_file": "jws-008.json",
+      "expected_canonical_sha256": "sha256-03986c6ac219046895b09665029a277e8d66e59d887b015f703905637dd3d109",
+      "expected_composed_decision": "act",
+      "signer_kids": [
+        "ao-fixture-v0.4-composed-2026-08",
+        "at-fixture-v0.4-composed-2026-08",
+        "presidio-fixture-v0.4-composed-2026-08",
+        "argentum-fixture-v0.4-composed-2026-08"
+      ],
+      "screen_ref_present": true,
+      "screen_ref_action_ref": "c832ef8610c6989f8c6f5cea51ac019b8ac9860e389110079a895e67595950a2",
+      "delegation_chain_ref_present": true,
+      "delegation_chain_ref": "ed4fc4cdee1e7ce657c34a3b11d3961cec6f3c1162f8fa4678fa4aa01332b757",
+      "mycelium_trail_id_present": false
+    }
+  ],
+  "reject_vectors": [
+    {
+      "id": "comp-r05",
+      "description": "delegation_chain_ref hop 1 widens scope: hops[0].scope is x402:payment and hops[1].scope is x402:* , which is broader. Verifiers MUST enforce monotonic narrowing per argentum-core delegation-chain-ref-v1 (failure_mode scope_widening) and reject. Root anchoring, chain continuity, the chain content address, and leaf anchoring all remain valid so the reject isolates narrowing.",
+      "payload_file": "payload-r05.json",
+      "jws_file": "jws-r05.json",
+      "expected_failure": "delegation_chain_ref_scope_widening",
+      "failure_layer": "delegation_chain_narrowing"
+    },
+    {
+      "id": "comp-r06",
+      "description": "delegation_chain_ref chain continuity broken: hops[0].delegatee does not equal hops[1].delegator. Verifiers MUST enforce continuity per argentum-core delegation-chain-ref-v1 (failure_mode chain_break) and reject. Monotonic narrowing, root anchoring, the chain content address, and leaf anchoring all remain valid so the reject isolates continuity.",
+      "payload_file": "payload-r06.json",
+      "jws_file": "jws-r06.json",
+      "expected_failure": "delegation_chain_ref_chain_break",
+      "failure_layer": "delegation_chain_continuity"
+    }
+  ]
+}
