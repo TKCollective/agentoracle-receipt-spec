@@ -1,325 +1,297 @@
-# AgentOracle Verification Receipt Format — Draft v0.1
+# Verification Receipt Format
 
-[![Mycelium Provider](https://img.shields.io/badge/Mycelium-Provider-4a90e2)](https://github.com/giskard09/argentum-core/blob/main/docs/mycelium-provider-protocol.md)
+A signed, offline-verifiable receipt recording **what was checked before an agent acted**, so a gate can refuse to proceed and a later examiner can recompute the decision.
 
-> **Status:** EARLY DRAFT for public discussion. Not yet implemented.
-> Posted in response to a [Coinbase Developer Discord #x402 thread](https://discord.gg/cdp) on Apr 29, 2026 about pre-action verification as a sibling family to environment-state attestations.
-> Comments / PRs / forks welcome.
+**Version 0.3 — in production.** The v0.3 envelope and its decision mapping (`agentoracle-v0.3-2026-05-30`) have been serving live traffic since May 2026. This document is normative for v0.3. Extension work for v0.4 is an open draft and is **not** normative — see [Extension draft](#extension-draft-v04).
 
-> ⚠️ **Benchmark numbers are provisional — not yet third-party reproducible.**
-> The cited FEVER metrics in this document come from two different evaluation settings that are not directly comparable:
-> - **93.9% label accuracy** is measured on FEVER 1.0 dev with **oracle evidence supplied** (gold evidence fed to the label classifier).
-> - **78.4% FEVER score** is measured on FEVER 1.0 dev with **our retrieval pipeline end-to-end** (our retriever + our label).
->
-> Conflating them in a single sentence is our error and will be corrected. In addition, FEVER 1.0 is a public 2018 benchmark — parametric-knowledge contamination on a modern LLM is a live risk that has not yet been controlled for.
->
-> Until the eval harness is public and reproducible by a third party, treat these numbers as **provisional**. Planned before any external citation:
-> - Publish docker-wrapped, seeded eval harness
-> - Report recall@5 and recall@10 on dev alongside headline scores
-> - Run contamination-controlled eval on a newer held-out benchmark (AVeriTeC 2024) and publish side-by-side
->
-> See [Discord #x402 thread, Apr 29, 2026](https://discord.gg/cdp) for the original critique from @beenz that prompted this disclosure.
-
-This document specifies a **cryptographically signed receipt format** for output from `POST https://agentoracle.co/evaluate` — AgentOracle's pre-action factual claim verification endpoint.
-
-The receipt is designed to be:
-
-1. **Verifiable offline** via published JWKS — consumers don't need to call AgentOracle to confirm a receipt is genuine.
-2. **Multi-axis fresh** — signature, calibration, and evidence each have independent `valid_until` timestamps. A claim's underlying evidence can age out without invalidating the calibration of the verifier; the signing key can rotate without invalidating prior receipts.
-3. **W3C VC Confidence Method-aligned** ([Oct 2025 WD](https://www.w3.org/TR/vc-confidence-method/)) — confidence as a sidecar property, not a peer claim.
-4. **Composable** with the [Decixa](https://decixa.ai) `trust_evidence` axes (uptime / schema / data quality) and with Mastercard Verifiable Intent's `environment.*` constraint family as a sibling under `verification.*`.
+| | |
+|---|---|
+| Envelope | `verification.v0.3+composed` |
+| Canonicalization | JCS ([RFC 8785](https://datatracker.ietf.org/doc/html/rfc8785)) |
+| Signature | Ed25519 over JWS ([RFC 7515](https://datatracker.ietf.org/doc/html/rfc7515)), `alg: EdDSA` |
+| Multi-issuer | Yes — `signatures[]` accepts additional co-signers over identical canonical bytes |
+| IETF draft | [`draft-krausz-verification-state-01`](https://datatracker.ietf.org/doc/draft-krausz-verification-state) |
+| Independent implementations | 2 (one byte-identical, built from this spec text alone) |
+| Conformance vectors | Published — see [Conformance](#conformance) |
 
 ---
 
-## 1. Background and Motivation
+## Verify a receipt yourself
 
-Today AgentOracle's `/evaluate` returns:
+You do not need to contact any verifier's service to check a receipt. Install the verifier and run it against the canonical bytes:
 
-```json
-{
-  "evaluation_id": "eval_1777474288985_2voiqu",
-  "evaluation": {
-    "overall_confidence": 0.87,
-    "recommendation": "act",
-    "recommendation_text": "Safe to act. Claim is well-supported by multiple sources.",
-    "claims": [...]
-  },
-  "meta": { "endpoint": "/evaluate", "verification_method": "...", ... }
-}
+```bash
+pip install agentoracle-receipt-verify
 ```
 
-That's adequate for **online**, **trusted-channel** consumers — they call AgentOracle directly, get the verdict, act on it. The `evaluation_id` works as an audit-trail-by-lookup identifier when a downstream consumer needs to revisit what was checked.
+```python
+from agentoracle_receipt_verify import verify
 
-It is **not adequate** for:
+result = verify(receipt_json)      # returns per-signature validity + canonical hash
+print(result.canonical_sha256)     # recompute this yourself from the payload
+print(result.signers)              # issuer + kid for every signature present
+```
 
-- **Offline verification** — an auditor reviewing a 6-month-old agent decision cannot independently verify the verdict was actually issued by AgentOracle without trusting our database.
-- **Receipt-passing protocols** — e.g. when an agent presents proof-of-verification to a downstream verifier (Decixa's resolver, an x402 facilitator, Mastercard's Verifiable Intent mandate, an end-user agent governance dashboard) without a roundtrip to AgentOracle.
-- **Multi-axis freshness reasoning** — the consumer cannot tell *why* a stale receipt is stale: did the signing key rotate, did the calibration anchor refresh, or did the underlying evidence move? Each has different remediation.
+The verifier fetches published JWKS, recomputes JCS canonical bytes from the payload, and checks each Ed25519 signature. **It does not call the issuing service.** Signing keys are published at the issuer's JWKS URL, named in `signature_meta`.
 
-This spec proposes a JWS-signed receipt with separate `valid_until` per axis to address all three.
-
----
-
-## 2. Architectural Position
-
-This format places AgentOracle's verification output in the **`verification.*` family** rather than under [Mastercard Verifiable Intent's](https://github.com/mastercard/verifiable-intent) existing `environment.*` constraint family.
-
-Justification (per the architectural critique raised in the [linked Discord thread](https://discord.gg/cdp)):
-
-| Property | `environment.*` (existing) | `verification.*` (proposed) |
-|---|---|---|
-| Predicate type | Boolean (e.g. `market_state == OPEN`) | Probabilistic in `[0,1]` (e.g. `confidence == 0.87`) |
-| Threshold ownership | Oracle-defined (semantics fixed) | Verifier-defined (consumer policy) |
-| Freshness | Uniform single TTL | Multi-axis (signature × calibration × evidence) |
-| Gating logic | Verifier-trivial (`if !state then halt`) | Verifier-substantive (`if confidence < user_threshold then halt`) |
-
-Adopting `verification.*` as a sibling family preserves the clean fail-closed semantics of `environment.*` while accommodating the inherently probabilistic shape of factual claim verification. Aligns with the [W3C VC Confidence Method](https://www.w3.org/TR/vc-confidence-method/) precedent of treating confidence as a sidecar property.
+To confirm the canonical bytes independently, canonicalize the `payload` object with any RFC 8785 implementation and SHA-256 the result. It must equal `canonical_sha256`.
 
 ---
 
-## 3. Receipt Envelope
+## What a receipt proves, and what it does not
 
-The receipt is a **JWS** ([RFC 7515](https://datatracker.ietf.org/doc/html/rfc7515)) compact serialization, alternative encodings (JWS JSON, COSE) MAY be supported in future revisions.
+This section is normative for how implementers describe the format, and it is the most important section in this document.
 
-### 3.1 JWS Header
+**A receipt proves:**
+
+1. **Issuance** — a specific key, resolvable from published JWKS, committed to this exact content.
+2. **Integrity** — the content has not been altered since signing; any change breaks the canonical hash and every signature over it.
+3. **Non-repudiation** — the issuer cannot later deny having made this determination, or claim it made a different one.
+4. **Recomputability** — the receipt carries the decision inputs and the identifier and hash of the ruleset applied, so a third party can re-derive the decision rather than accept it.
+
+**A receipt does not prove the verified claim is true.**
+
+A signature establishes who issued a determination, not whether that determination is correct. For any check requiring judgement, a receipt is a **non-repudiable commitment to an opinion**, not evidence the opinion is right. An issuer with a valid key can sign a receipt over any content, including content it never actually verified.
+
+Three properties narrow that gap. None closes it:
+
+- **Deterministic checks.** Where a check is mechanically re-runnable from the receipt's own inputs, "trust the issuer" is replaced by "re-run the check." A deterministic verification mode with six such check types and no model in the trust chain ships in the reference implementation.
+- **Multi-issuer composition.** `signatures[]` accepts co-signers over identical canonical bytes, so a consumer need not trust any single issuer. Two independent implementations have produced byte-identical canonical bytes from this spec text.
+- **Non-evaluation is a first-class state.** The format distinguishes *"checked and could not establish"* from *"did not check."* An issuer that skipped a check cannot represent the result as a pass — see [Decision mapping](#decision-mapping).
+
+Consumers requiring a truth guarantee rather than an accountability guarantee should treat receipts as **evidence about process**, and apply their own policy on top.
+
+---
+
+## Terminology
+
+| Term | Meaning |
+|---|---|
+| **claim verifier** | Any service that evaluates a claim and issues a receipt in this format. The format is not specific to any one implementation. |
+| **issuer** | The signing party. One receipt may carry several. |
+| **consumer** | The party verifying a receipt and applying policy to it. |
+| **gate** | The decision point that consumes a receipt and permits or refuses an action. |
+| **examiner** | A party reviewing a receipt after the fact, without access to the issuer's runtime. |
+
+This document uses generic terms throughout. Implementation names appear only under [Implementations](#implementations).
+
+---
+
+## Receipt envelope
+
+The receipt is a JWS with a JCS-canonicalized JSON payload. Additional serializations (COSE) are out of scope for v0.3.
+
+### JWS header
 
 ```json
 {
-  "alg": "ES256",
-  "kid": "ao-2026-04-key-01",
-  "typ": "ao-receipt+jws"
+  "alg": "EdDSA",
+  "kid": "ao-composed-2026-06-ed25519-c3abfce3",
+  "typ": "application/vnd.verification.v0.3+composed+jws"
 }
 ```
 
 | Field | Required | Notes |
 |---|---|---|
-| `alg` | yes | `ES256` initial draft. Other curves under consideration. |
-| `kid` | yes | Resolves via JWKS at `https://agentoracle.co/.well-known/jwks.json` |
-| `typ` | yes | Fixed `"ao-receipt+jws"` |
+| `alg` | yes | `EdDSA` (Ed25519) |
+| `kid` | yes | Resolves via the issuer's published JWKS |
+| `typ` | yes | `application/vnd.verification.v0.3+composed+jws` |
 
-### 3.2 JWS Payload (Claims)
+### Payload
 
 ```json
 {
-  "iss": "https://agentoracle.co",
-  "sub": "urn:agentoracle:evaluation:eval_1777474288985_2voiqu",
-  "iat": 1777474288,
-  "exp": 1785250288,
-  "ao_v": "v0.1",
-  "ao_claim": {
-    "text": "The Eiffel Tower is in Paris, France.",
-    "hash": "sha256:9b1c6...",
-    "redacted": false
+  "composed_decision": "act",
+  "composed_decision_rule": "AND_PRESENT",
+  "envelope_kind": "verification.v0.3+composed",
+  "receipt_version": "0.3.0-composed",
+  "signature_meta": {
+    "agentoracle_jwks_url": "https://agentoracle.co/.well-known/jwks.json"
   },
-  "ao_verdict": "supported",
-  "ao_confidence": 0.87,
-  "ao_method": "agentoracle/v2-adversarial-fever-calibrated",
-  "ao_calibration": {
-    "anchor_dataset": "FEVER-1.0-paper_dev-200",
-    "anchor_seed": 42,
-    "anchor_as_of": "2026-04-21",
-    "valid_until": 1793026288
+  "subject": {
+    "claim_hash": "sha256-9b1c6...",
+    "skill_hash": "sha256-3b1f2d8e..."
   },
-  "ao_sources_used": ["sonar", "sonar-pro", "adversarial", "gemma"],
-  "ao_evidence": {
-    "uri": "https://agentoracle.co/evaluate/eval_1777474288985_2voiqu/evidence",
-    "valid_until": 1777560688
+  "timestamp": "2026-06-30T13:28:18.674Z",
+  "timestamp_ms": 1782826098674,
+  "v_gate": {
+    "confidence": 0.87,
+    "issuer": "agentoracle.co",
+    "mapping_hash": "sha256-3b1f2d8e...",
+    "mapping_id": "agentoracle-v0.3-2026-05-30",
+    "signed_at": "2026-06-30T13:28:18.674Z",
+    "v_adversarial_result": "resilient",
+    "v_confidence": 0.87,
+    "v_gate_threshold": 0.7,
+    "v_recommendation": "confident_supported",
+    "v_verdict": "supported",
+    "verdict": "act"
   }
 }
 ```
 
-#### 3.2.1 Standard JWT claims
-
-| Claim | Required | Notes |
+| Field | Required | Notes |
 |---|---|---|
-| `iss` | yes | Always `https://agentoracle.co` |
-| `sub` | yes | URN form of the original `evaluation_id` |
-| `iat` | yes | Receipt signing time (Unix seconds) |
-| `exp` | yes | Signature validity end. Tied to JWK rotation cadence (proposed: 90 days). |
+| `envelope_kind` | yes | Fixed `verification.v0.3+composed` |
+| `receipt_version` | yes | Fixed `0.3.0-composed` |
+| `composed_decision` | yes | `act` or `halt`. Result of `composed_decision_rule` over all present sibling blocks. |
+| `composed_decision_rule` | yes | `AND_PRESENT` — every present sibling must permit; a single `halt` collapses the composition |
+| `subject.claim_hash` | yes | SHA-256 of the claim text. The binding object; claim text is never required in the receipt |
+| `subject.skill_hash` | yes | SHA-256 of the ruleset document that reduced signals to a verdict |
+| `timestamp` / `timestamp_ms` | yes | RFC 3339 UTC with exactly 3 fractional digits, and its integer form. Derived from one source so identical inputs yield byte-identical canonical bytes |
+| `v_gate` | yes | The verification decision block — see below |
+| `signature_meta` | yes | JWKS URLs for the signers, so a consumer can resolve keys without out-of-band configuration |
 
-#### 3.2.2 AgentOracle-namespaced claims
+Sibling blocks other than `v_gate` (for example an independent skill or screening block from a different issuer) MAY be present. `composed_decision` is computed over all of them.
 
-| Claim | Required | Notes |
+### `v_gate`
+
+| Field | Required | Notes |
 |---|---|---|
-| `ao_v` | yes | Receipt format version. This document = `v0.1`. |
-| `ao_claim` | yes | The verified claim — `text` OR `hash` (claim text is OPTIONAL when caller marks the input as PII-sensitive; the hash is then the binding object) |
-| `ao_verdict` | yes | One of `supported` / `refuted` / `unverifiable` |
-| `ao_confidence` | yes | Float in `[0,1]` |
-| `ao_method` | yes | Self-describing method tag identifying the verification pipeline + calibration anchor |
-| `ao_calibration` | yes | Calibration evidence — see §3.2.3 |
-| `ao_sources_used` | yes | Array of source labels actually used in this evaluation (subset of `["sonar","sonar-pro","adversarial","gemma"]`) |
-| `ao_evidence` | optional | Pointer to per-claim source set (recoverable via authenticated GET) |
+| `v_verdict` | yes | `supported` · `refuted` · `unverifiable` · `unknown` |
+| `v_adversarial_result` | yes | `resilient` · `vulnerable` · `not_checked` |
+| `v_confidence` | yes | Float in `[0,1]` |
+| `v_gate_threshold` | yes | Decision threshold **from the mapping, not from the request.** See note below |
+| `v_recommendation` | yes | Derived — see [Decision mapping](#decision-mapping) |
+| `verdict` | yes | `act` or `halt`, derived from `v_recommendation` by the gate map |
+| `mapping_id` | yes | Identifier of the ruleset applied |
+| `mapping_hash` | yes | SHA-256 of the ruleset bytes. Content-addressing: fetch by hash, hash the bytes, confirm they match |
+| `issuer` | yes | Issuing authority for this block |
+| `signed_at` | yes | Must equal envelope `timestamp` for a single-issuer receipt |
 
-#### 3.2.3 Calibration claim
-
-The `ao_calibration` claim is the cornerstone of the multi-axis freshness model.
-
-```json
-{
-  "anchor_dataset": "FEVER-1.0-paper_dev-200",
-  "anchor_seed": 42,
-  "anchor_as_of": "2026-04-21",
-  "valid_until": 1793026288
-}
-```
-
-Each calibration anchor identifies a publicly-reproducible benchmark used to calibrate AgentOracle's confidence scores. **The anchor is itself an audit object** — given `anchor_dataset`, `anchor_seed`, and `anchor_as_of`, anyone can replay the benchmark and verify the confidence calibration.
-
-`valid_until` for calibration is **independent of the signature `exp`**. Recalibration on a new dataset (e.g., switching to FEVER 2.0 adversarial or Symmetric) extends or replaces the calibration anchor without forcing reissuance of every receipt signed under the prior anchor.
-
-Reference: AgentOracle's current calibration anchor is the open benchmark at [github.com/TKCollective/agentoracle-fever-benchmark](https://github.com/TKCollective/agentoracle-fever-benchmark).
-
-#### 3.2.4 Evidence claim
-
-The `ao_evidence` claim points at the per-claim source set used during verification. The URI is RECOMMENDED to be authenticated (e.g., served only with proof of `sub` ownership) since source URLs may include data the original caller treated as sensitive context.
-
-`ao_evidence.valid_until` reflects the TTL of the underlying source set itself. Web sources move; cached source content may go stale. This timestamp tells the consumer when the *evidence* — not the *signature* and not the *calibration* — should be re-fetched.
+**`v_gate_threshold` is a property of the mapping and is not caller-tunable.** A request may carry its own advisory threshold for presentation purposes, but that value MUST NOT be written into the receipt. Echoing a caller-supplied threshold would let a consumer obtain a signed receipt asserting a permissive gate threshold it did not actually pass.
 
 ---
 
-## 4. JWKS
+## Decision mapping
 
-AgentOracle SHALL publish a JWKS at:
+`v_recommendation` is derived by applying the mapping's rules in order. This table is normative for `agentoracle-v0.3-2026-05-30`:
 
-```
-https://agentoracle.co/.well-known/jwks.json
-```
+| # | `v_verdict` | `v_adversarial_result` | confidence | `v_recommendation` |
+|---|---|---|---|---|
+| 5 | `refuted` | any | any | `refuted` |
+| 6 | `unverifiable` or `unknown` | any | any | `unverifiable` |
+| 1 | `supported` | `resilient` | ≥ threshold | `confident_supported` |
+| 2 | `supported` | `not_checked` | ≥ threshold | `un_probed_not_cleared` |
+| 3 | `supported` | `vulnerable` | any | `vulnerable_supported` |
+| 4 | `supported` | `resilient` or `not_checked` | < threshold | `weak_supported` |
+| 7 | — | — | — | `error` (unreachable fallback) |
 
-containing all currently-active signing keys plus the most recent N rotated keys (proposed: N=4, i.e. 1 year of rotation history at quarterly cadence).
+**Gate map: `confident_supported` → `act`. Every other recommendation → `halt`.**
 
-Example:
+Two consequences worth stating explicitly, because both have been misread:
 
-```json
-{
-  "keys": [
-    {
-      "kty": "EC",
-      "crv": "P-256",
-      "kid": "ao-2026-04-key-01",
-      "x": "...",
-      "y": "...",
-      "alg": "ES256",
-      "use": "sig"
-    },
-    {
-      "kty": "EC",
-      "crv": "P-256",
-      "kid": "ao-2026-01-key-01",
-      "x": "...",
-      "y": "...",
-      "alg": "ES256",
-      "use": "sig"
-    }
-  ]
-}
-```
+- **`supported` alongside `not_checked` is a legitimate state and it does not pass.** It derives `un_probed_not_cleared` and halts. It is distinct from `unverifiable`: one records that no adversarial attempt was made, the other that an attempt was made and failed. **Implementations MUST NOT collapse these into a single state.** An examiner needs the difference.
+- **A receipt reaching rule 7 is malformed.** `error` indicates the inputs were not a valid combination; treat it as a verification failure, not a halt.
 
-Rotation cadence: proposed 90 days, key history retained for verification of older receipts.
+### Guardrails on signing
+
+An implementation MUST refuse to sign rather than emit a malformed receipt. At minimum:
+
+- `v_verdict` and `v_adversarial_result` outside their enumerations MUST throw.
+- `v_confidence` outside `[0,1]`, or non-finite, MUST throw.
+- `mapping_hash` that is not a 64-character lowercase hex SHA-256 MUST throw.
+- An evaluation with **zero evaluated members** MUST NOT produce a receipt at all. A verifier that could not evaluate anything must report unavailability, not sign an envelope over an empty determination.
 
 ---
 
-## 5. Multi-Axis Freshness Verification
+## Verification procedure
 
-A consumer verifying a receipt MUST evaluate three axes independently:
+A consumer MUST perform, in order:
 
-### 5.1 Signature Freshness
+1. **Resolve keys.** Fetch JWKS from the URL in `signature_meta`. Locate each `kid`.
+2. **Recompute canonical bytes.** Canonicalize `payload` per RFC 8785. SHA-256 it. Compare to `canonical_sha256` if the transport supplies one.
+3. **Verify every signature** in `signatures[]` over those bytes. A receipt is valid only if every signature present verifies.
+4. **Re-derive the decision.** Apply the mapping identified by `mapping_id` to `v_verdict`, `v_adversarial_result`, and `v_confidence`. Confirm the derived `v_recommendation` and `verdict` match what the receipt asserts. **A mismatch means the receipt is internally inconsistent and MUST be rejected**, even when signatures verify.
+5. **Apply local policy.** Signature validity is not authorization. A consumer decides which recommendations it accepts.
 
-```
-SIGNATURE_FRESH(receipt) ==
-  receipt.kid IN jwks.keys AND
-  jwks.keys[receipt.kid].active_until > now AND
-  receipt.iat <= now AND
-  receipt.exp > now
-```
-
-### 5.2 Calibration Freshness
-
-```
-CALIBRATION_FRESH(receipt) ==
-  receipt.ao_calibration.valid_until > now
-```
-
-### 5.3 Evidence Freshness
-
-```
-EVIDENCE_FRESH(receipt) ==
-  receipt.ao_evidence.valid_until > now
-```
-
-### 5.4 Consumer Policy
-
-The receipt is **VERIFIED VALID** iff `SIGNATURE_FRESH(r)` is true. Consumers MAY require additional axes based on their policy:
-
-- **Lightweight consumer** (fast-decision agent): require only `SIGNATURE_FRESH`.
-- **Standards-track consumer** (Mastercard mandate, x402 facilitator): require `SIGNATURE_FRESH AND CALIBRATION_FRESH`.
-- **Auditor consumer** (regulator, legal review): require all three.
-
-**Gating logic is owned by the consumer, not the oracle.** AgentOracle publishes axis-level timestamps; consumer policy decides which axes are mandatory.
+Step 4 is what makes the receipt recomputable rather than merely authentic. Skipping it reduces the format to a signed assertion.
 
 ---
 
-## 6. Composability
+## Conformance
 
-### 6.1 With Decixa `trust_evidence`
+Conformance is validated against a published fixture set, with byte-identical recomputation confirmed across two independent issuers. Fixtures: [`agentoracle-v1` conformance set](https://github.com/giskard09/argentum-core/tree/main/examples/conformance/agentoracle-v1), merged 2026-06-17.
 
-Decixa's `trust_evidence` composite ([as documented](https://www.decixa.ai/docs)) currently spans:
-- **Schema Compliance** (does the response conform to declared `payment_requirements`?)
-- **Uptime + Latency**
-- **Data Quality** (currently reserved slot)
+`action_ref` derivation follows the canonical JCS + SHA-256 construction in [`draft-giskard-aeoess-action-ref`](https://github.com/giskard09/draft-giskard-aeoess-action-ref) over four preimage fields — `agent_id`, `action_type`, `scope`, `timestamp` (RFC 3339 UTC, exactly 3 fractional digits).
 
-AgentOracle receipts are designed to feed the **Data Quality** axis. The `ao_confidence` field is the candidate signal, with `ao_calibration` providing the audit grounds. Decixa's composite scoring may consume signed receipts directly without trusting AgentOracle's runtime to compute the input — receipts are independently verifiable.
-
-### 6.2 With Mastercard Verifiable Intent
-
-Per the architectural argument that surfaced in the [Coinbase Developer Discord #x402 thread](https://discord.gg/cdp), `verification.*` is proposed as a **sibling family** to Mastercard's existing `environment.*` constraint family in the [Verifiable Intent repository](https://github.com/mastercard/verifiable-intent).
-
-A user-issued mandate declaring a `verification.factual_claim_state` constraint would carry a confidence threshold and reference an issuer set (e.g. `[https://agentoracle.co]`). At gating time, the mandate-evaluator validates: (1) signature freshness, (2) confidence ≥ user threshold, (3) calibration freshness against the user's policy.
+A vector set covering the decision mapping — including a required-reject vector for a receipt that reports a pass while a member reads `not_checked` — is maintained alongside this spec.
 
 ---
 
-## 7. Open Questions
+## Standards position
 
-The following items are intentionally underspecified pending discussion:
+The `verification.*` constraint family is specified in [`draft-krausz-verification-state-01`](https://datatracker.ietf.org/doc/draft-krausz-verification-state), *"The verification.\* Constraint Family: Pre-Action Fail-Closed …"*. The draft is filed with the IETF and uses generic terminology throughout; this document is its implementation-facing companion.
 
-1. **COSE encoding** — should the spec include a normative COSE binding alongside JWS for embedded-device consumers?
-2. **Multi-issuer receipts** — when verification spans multiple oracles (e.g. AgentOracle + a different content authenticity verifier), should the receipt support multi-signature attestation, or should consumers verify N separate single-signer receipts?
-3. **Calibration anchor versioning** — when the underlying benchmark dataset itself revises (FEVER 1.0 → 2.0), how do we name and reference both versions without breaking existing consumers?
-4. **Evidence URI authentication** — proposed: caller's bearer presentation matches `sub`. Alternative: signed evidence URI that delegates access for a TTL.
-5. **Privacy** — when `ao_claim.redacted == true`, the `text` field is omitted and only `hash` is present. Does this provide adequate privacy guarantees for content-team consumers verifying brand-sensitive claims pre-publication?
+**Why a sibling family rather than an existing constraint namespace.** Environment-state constraint families evaluate boolean predicates with oracle-fixed semantics and a single uniform TTL, and gating against them is trivial. Claim verification is probabilistic, its threshold belongs to the consumer's policy rather than the oracle, and its freshness is not one-dimensional — a signing key can rotate without invalidating prior determinations, and underlying evidence can age without invalidating the verifier's calibration. Folding a probabilistic predicate into a boolean family loses exactly the distinctions a gate needs.
+
+Confidence is carried as a sidecar property rather than a peer claim, aligning with the [W3C VC Confidence Method](https://www.w3.org/TR/vc-confidence-method/) working draft.
+
+> **Note, 2026-08.** Earlier revisions of this document positioned the family against a public Mastercard Verifiable Intent repository. That repository no longer resolves publicly, so the comparison above is stated structurally rather than as a reference to a specific external artifact.
 
 ---
 
-## 8. Status, Contribution, and Discussion
+## Implementations
 
-This is a **DRAFT**. Nothing here is implemented yet. The point of publishing this draft is to invite collaboration before code lands.
+The format is not specific to any implementation. Known implementations:
 
-- Issues / discussion: [GitHub issues on this repo](https://github.com/TKCollective/agentoracle-receipt-spec/issues)
-- Discord: [#x402 on Coinbase Developer Discord](https://discord.gg/cdp)
-- Email: hello@agentoracle.co
+| Implementation | Status | Notes |
+|---|---|---|
+| **AgentOracle** (`agentoracle.co`) | Production since May 2026 | Reference implementation. Pre-action claim verification with self-serve and pay-per-call access, on-chain settlement, and a deterministic verification mode with no model in the trust chain. JWKS at [`/.well-known/jwks.json`](https://agentoracle.co/.well-known/jwks.json) |
+| **AgentTrust** | Independent | Built from this spec text without access to the reference code. Produces **byte-identical** canonical bytes on the shared fixture set. Co-signs composed envelopes |
 
-PRs and forks welcome. Particularly interested in:
-- Alignment review from anyone on the [Mastercard Verifiable Intent](https://github.com/mastercard/verifiable-intent) team
-- Implementation feedback from the [W3C VC Confidence Method](https://www.w3.org/TR/vc-confidence-method/) editors
-- Composability review from the [Decixa](https://decixa.ai) team
+An offline verifier is published independently of any issuer: [`agentoracle-receipt-verify`](https://pypi.org/project/agentoracle-receipt-verify/) on PyPI.
+
+The reference implementation is a provider under the [Mycelium provider protocol](https://github.com/giskard09/argentum-core/blob/main/docs/mycelium-provider-protocol.md). When composed with a post-action attestation flow, a returned trail identifier can be carried at envelope level as a sibling pointer to `v_gate`.
+
+---
+
+## Extension draft (v0.4)
+
+**Not normative. Do not implement against this section.** v0.4 is an open draft under discussion; v0.3 is the shipped and normative version. Open items include a signed, ordered session history across a multi-step run (an append-only transparency log rather than per-claim receipts alone), a COSE binding for embedded consumers, and a first-class `not_evaluated` value in the verdict enumeration so that non-evaluation need not route through `unknown`.
+
+Discussion happens in issues and pull requests on this repository. Extension proposals are tracked as additive changes; a change to the decision mapping requires a new `mapping_id` and hash, because receipts already in circulation were derived under the prior ruleset.
+
+---
+
+## Corrections record
+
+Corrections are kept permanently. Nothing in this section is removed once entered.
+
+**2026-04-29 — FEVER metrics conflated.** An earlier revision cited two FEVER figures adjacently, implying they were comparable. They were not: they came from different evaluation settings, one with gold evidence supplied to the label classifier and one end-to-end through the retrieval pipeline. Conflating them was our error. Separately, FEVER 1.0 is a public 2018 benchmark and parametric-knowledge contamination on a modern model is a live risk that was not controlled for. Raised by Beenz / [headlessoracle](https://github.com/headlessoracle).
+
+**No FEVER figure is cited in this document, and none should be cited externally,** until a seeded containerized harness is public, recall@5 and recall@10 are reported alongside any headline score, and a contamination-controlled run on a newer held-out benchmark is published side by side.
+
+**2026-08-27 — the FEVER figures are additionally under review for what they measure.** Two different definitions of the same percentage exist across our own repositories, and at most one can be correct. Until that is resolved against the benchmark code, no specific FEVER number is reproduced anywhere in this document.
+
+**2026-08-27 — this document misrepresented the project.** Until this revision, the README described a `v0.1` draft with an `ao_*`-prefixed JWT payload and an ES256 signature, under a status line reading *"EARLY DRAFT … Not yet implemented."* None of that had been accurate for months: v0.3 with the `v_gate` composed envelope and Ed25519 signatures had been in production since May 2026. The document also named the reference implementation in its title, mixing a product with a format specification, and led with the correction notice above rather than with what the format is. Every technical reader who found this repository in that period was given a materially wrong picture. Raised by **Ryosuke Niwa**.
 
 ---
 
 ## Acknowledgements
 
-This draft is a direct response to the architectural critique raised by Beenz / [headlessoracle](https://github.com/headlessoracle) in the Coinbase Developer Discord #x402 thread (Apr 29, 2026). The objection that factual claim verification's predicate shape doesn't fit the existing `environment.*` namespace is the originating insight. The Path B proposal (sibling family with confidence as sidecar) is theirs.
+**Ryosuke Niwa** — for the terminology and framing correction that produced this revision: separate the format specification from the implementation that issues it, and use generic terms such as *claim verifier* throughout. Also for pressing the distinction between authenticity and truth, which is now the [What a receipt proves](#what-a-receipt-proves-and-what-it-does-not) section.
 
-Acknowledgement is not endorsement — they have not reviewed this draft.
+**Beenz / [headlessoracle](https://github.com/headlessoracle)** — for the original architectural objection that a probabilistic verification predicate does not fit a boolean environment-state namespace, and for the sibling-family-with-confidence-as-sidecar shape that followed from it. Also for the FEVER conflation catch above.
+
+**[@giskard09](https://github.com/giskard09)** — for the `action_ref` canonical derivation and the conformance fixture set that made independent byte-identical recomputation checkable.
+
+Acknowledgement is not endorsement. None of the above has reviewed this revision.
 
 ---
 
-## Mycelium Trails
+## Contributing
 
-This implementation is a [Mycelium Provider](https://github.com/giskard09/argentum-core/blob/main/docs/mycelium-provider-protocol.md) under the protocol published by [@giskard09](https://github.com/giskard09) on 2026-06-20.
+Issues and pull requests: [this repository](https://github.com/TKCollective/agentoracle-receipt-spec/issues).
 
-The `verification.v0.3` receipt envelope computes `action_ref` per the canonical JCS+SHA-256 derivation defined in [`draft-giskard-aeoess-action-ref`](https://github.com/giskard09/draft-giskard-aeoess-action-ref) over the four preimage fields (`agent_id`, `action_type`, `scope`, `timestamp` — RFC 3339 UTC with exactly 3 fractional digits). Conformance is validated against the [`agentoracle-v1` fixture set](https://github.com/giskard09/argentum-core/tree/main/examples/conformance/agentoracle-v1) merged into argentum-core on 2026-06-17, with byte-identical recomputation confirmed across two independent issuers (AgentOracle + AgentTrust).
+Particularly wanted:
 
-When AgentOracle is composed with a Mycelium-backed post-action attestation flow, the returned `mycelium_trail_id` can be carried at the envelope level as a sibling pointer to `v_gate` — see the composed-envelope spec (shipping with the second-implementer co-signature work, [tracking issue forthcoming]).
+- **Break it.** The [What a receipt proves](#what-a-receipt-proves-and-what-it-does-not) section is the place to attack. If you can construct a receipt that verifies while asserting something the issuer did not determine, that is the bug worth reporting.
+- Independent implementations, especially ones that disagree with the reference on canonical bytes.
+- Review of the decision mapping against real gating requirements.
+
+---
 
 ## License
 
-Spec text: [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/). Reference implementations (forthcoming): MIT.
+Specification text: [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/). The published offline verifier is MIT.
