@@ -25,14 +25,27 @@ pip install agentoracle-receipt-verify
 ```
 
 ```python
+import json, urllib.request
 from agentoracle_receipt_verify import verify
 
-result = verify(receipt_json)      # returns per-signature validity + canonical hash
+# The JWKS URL is carried in the receipt payload's `signature_meta`.
+jwks_url = "https://agentoracle.co/.well-known/jwks.json"
+jwks = json.load(urllib.request.urlopen(jwks_url))
+
+result = verify(receipt_json, {jwks_url: jwks})
+print(result.valid)                # True only if every signature verified
+print(result.checks)               # includes all_signatures_verified
 print(result.canonical_sha256)     # recompute this yourself from the payload
 print(result.signers)              # issuer + kid for every signature present
 ```
 
-The verifier fetches published JWKS, recomputes JCS canonical bytes from the payload, and checks each Ed25519 signature. **It does not call the issuing service.** Signing keys are published at the issuer's JWKS URL, named in `signature_meta`.
+**The second argument is required to check signatures.** Called as `verify(receipt_json)`
+with no JWKS map, the verifier checks only recompute-invariants: it returns
+`valid: True` with an empty `signers` list and no `all_signatures_verified` check,
+having verified no signature at all. Always pass the JWKS map, and assert on
+`result.checks["all_signatures_verified"]` rather than on `result.valid` alone.
+
+The verifier recomputes JCS canonical bytes from the payload and checks each Ed25519 signature against the JWKS you supply. It does not fetch JWKS for you. **It does not call the issuing service.** Signing keys are published at the issuer's JWKS URL, named in `signature_meta`.
 
 To confirm the canonical bytes independently, canonicalize the `payload` object with any RFC 8785 implementation and SHA-256 the result. It must equal `canonical_sha256`.
 
@@ -215,7 +228,7 @@ Conformance is validated against a published fixture set, with byte-identical re
 
 `action_ref` derivation follows the canonical JCS + SHA-256 construction in [`draft-giskard-aeoess-action-ref`](https://github.com/giskard09/draft-giskard-aeoess-action-ref) over four preimage fields — `agent_id`, `action_type`, `scope`, `timestamp` (RFC 3339 UTC, exactly 3 fractional digits).
 
-A vector set covering the decision mapping — including a required-reject vector for a receipt that reports a pass while a member reads `not_checked` — is maintained alongside this spec.
+A vector set covering the decision mapping — including a required-reject vector for a receipt that reports a pass while a member reads `not_checked` — is maintained alongside this spec at [`conformance/`](conformance/). Run it with `node conformance/check.mjs`.
 
 ---
 
@@ -266,6 +279,8 @@ Corrections are kept permanently. Nothing in this section is removed once entere
 
 **2026-08-27 — this document misrepresented the project.** Until this revision, the README described a `v0.1` draft with an `ao_*`-prefixed JWT payload and an ES256 signature, under a status line reading *"EARLY DRAFT … Not yet implemented."* None of that had been accurate for months: v0.3 with the `v_gate` composed envelope and Ed25519 signatures had been in production since May 2026. The document also named the reference implementation in its title, mixing a product with a format specification, and led with the correction notice above rather than with what the format is. Every technical reader who found this repository in that period was given a materially wrong picture. Raised by **Ryosuke Niwa**.
 
+
+**2026-08-27 — the verification walkthrough in this document failed open.** The Python example called `verify(receipt_json)` with no JWKS map. In that form the verifier checks recompute-invariants only and returns `valid: True` with an empty `signers` list, having verified no signature. This document also stated that the verifier fetches published JWKS; it does not. Anyone who followed the previous text believing they had checked a signature had not. Both statements are corrected in [Verify a receipt yourself](#verify-a-receipt-yourself); the format, the published keys, and the canonical-bytes recomputation were unaffected.
 ---
 
 ## Acknowledgements

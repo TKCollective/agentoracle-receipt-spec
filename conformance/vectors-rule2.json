@@ -1,0 +1,71 @@
+{
+  "$comment": "AgentOracle v0.3 recommendation_rules conformance vectors. Drafted 2026-08-27. NOT NORMATIVE until reviewed and published. Pins mapping-agentoracle-v0.3-2026-05-30 recommendation_rules + gate_map against regression. Each vector asserts the DERIVATION (v_verdict, v_adversarial_result, v_confidence) -> (v_recommendation, verdict). Signatures are deliberately out of scope: these test the rule table, not the signer.",
+  "mapping_id": "agentoracle-v0.3-2026-05-30",
+  "v_gate_threshold": 0.7,
+  "gate_map": "only confident_supported -> act; all else -> halt",
+  "vectors": [
+    {
+      "id": "rule2-accept",
+      "designation": "RULE 6 PAIR / ACCEPT",
+      "why": "The service-integrity self-contradiction case. A supported verdict with the adversarial dimension NOT evaluated is a legitimate, named state. It must be labelled un_probed_not_cleared and must halt. This is the vector the 2026-08-25 incident was filed against; the receipt layer already satisfied it.",
+      "input": { "v_verdict": "supported", "v_adversarial_result": "not_checked", "v_confidence": 0.93 },
+      "expect": { "v_recommendation": "un_probed_not_cleared", "verdict": "halt" }
+    },
+    {
+      "id": "rule2-reject-act",
+      "designation": "RULE 6 PAIR / REJECT",
+      "why": "A receipt asserting a pass decision while the adversarial dimension reads not_checked. This is the artifact that MUST fail the build. If this vector ever passes, supported-under-not_checked has become reachable as act and the gate_map has been broken.",
+      "input": { "v_verdict": "supported", "v_adversarial_result": "not_checked", "v_confidence": 0.93 },
+      "expect_must_not_equal": { "verdict": "act" }
+    },
+    {
+      "id": "rule2-reject-collapse",
+      "designation": "REGRESSION GUARD / H4",
+      "why": "Guards the OTHER direction, which is how we broke it ourselves on 2026-08-27. Routing non-evaluation to unknown makes the rule table exit at rule 6 and emit the generic unverifiable, destroying the distinction between 'no attempt was made' (un_probed_not_cleared) and 'an attempt failed' (unverifiable). Both halt, so a decision-only test does not catch this. wg-identity#21: indeterminate and not-evaluated must not collapse.",
+      "input": { "v_verdict": "supported", "v_adversarial_result": "not_checked", "v_confidence": 0.93 },
+      "expect_must_not_equal": { "v_recommendation": "unverifiable" }
+    },
+    {
+      "id": "rule1-confident",
+      "designation": "CONTROL",
+      "why": "The only path to act. Proves the accept vector above is not passing merely because everything halts.",
+      "input": { "v_verdict": "supported", "v_adversarial_result": "resilient", "v_confidence": 0.93 },
+      "expect": { "v_recommendation": "confident_supported", "verdict": "act" }
+    },
+    {
+      "id": "rule4-weak",
+      "designation": "CONTROL",
+      "why": "Same not_checked adversarial state, below threshold. Must be distinguishable from rule 2 - confidence and non-evaluation are independent axes.",
+      "input": { "v_verdict": "supported", "v_adversarial_result": "not_checked", "v_confidence": 0.5 },
+      "expect": { "v_recommendation": "weak_supported", "verdict": "halt" }
+    },
+    {
+      "id": "rule3-vulnerable",
+      "designation": "CONTROL",
+      "why": "Adversarial ran and found a contradiction. Distinct from both not_checked states.",
+      "input": { "v_verdict": "supported", "v_adversarial_result": "vulnerable", "v_confidence": 0.93 },
+      "expect": { "v_recommendation": "vulnerable_supported", "verdict": "halt" }
+    },
+    {
+      "id": "rule6-unverifiable",
+      "designation": "CONTROL",
+      "why": "A genuine failed attempt to establish the claim. Shares the halt decision with rule 2 but MUST carry a different recommendation - that difference is the whole point.",
+      "input": { "v_verdict": "unverifiable", "v_adversarial_result": "resilient", "v_confidence": 0.93 },
+      "expect": { "v_recommendation": "unverifiable", "verdict": "halt" }
+    },
+    {
+      "id": "rule5-refuted",
+      "designation": "CONTROL",
+      "why": "Refutation outranks every adversarial state.",
+      "input": { "v_verdict": "refuted", "v_adversarial_result": "not_checked", "v_confidence": 0.1 },
+      "expect": { "v_recommendation": "refuted", "verdict": "halt" }
+    },
+    {
+      "id": "d1-no-receipt",
+      "designation": "SERVICE INTEGRITY / NOT A GATE VECTOR",
+      "why": "Records the D1 requirement, which the rule table cannot express because it is about whether a receipt is issued at all. A zero-member evaluation MUST NOT produce a signed receipt in any state. Asserted by the runner as an absence, not a derivation.",
+      "input": { "members_evaluated": 0 },
+      "expect": { "receipt_issued": false, "http_status": 503, "status": "not_evaluated" }
+    }
+  ]
+}
