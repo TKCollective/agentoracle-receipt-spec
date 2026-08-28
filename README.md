@@ -228,6 +228,8 @@ Conformance is validated against a published fixture set, with byte-identical re
 
 `action_ref` derivation follows the canonical JCS + SHA-256 construction in [`draft-giskard-aeoess-action-ref`](https://github.com/giskard09/draft-giskard-aeoess-action-ref) over four preimage fields — `agent_id`, `action_type`, `scope`, `timestamp` (RFC 3339 UTC, exactly 3 fractional digits).
 
+`verification.v0.3` is the first candidate profile entry in the ERC-8210 Receipt Profile Registry ([entry merged 2026-06-23](https://github.com/wangbin9953/erc8210-aap/pull/4)). Registry status `candidate` means a single live issuer with a second independent implementation not yet recorded by the registry maintainer.
+
 A vector set covering the decision mapping — including a required-reject vector for a receipt that reports a pass while a member reads `not_checked` — is maintained alongside this spec at [`conformance/`](conformance/). Run it with `node conformance/check.mjs`.
 
 ---
@@ -281,6 +283,8 @@ Corrections are kept permanently. Nothing in this section is removed once entere
 
 
 **2026-08-27 — the verification walkthrough in this document failed open.** The Python example called `verify(receipt_json)` with no JWKS map. In that form the verifier checks recompute-invariants only and returns `valid: True` with an empty `signers` list, having verified no signature. This document also stated that the verifier fetches published JWKS; it does not. Anyone who followed the previous text believing they had checked a signature had not. Both statements are corrected in [Verify a receipt yourself](#verify-a-receipt-yourself); the format, the published keys, and the canonical-bytes recomputation were unaffected.
+
+**2026-08-28 — the correction above described a superseded release.** The entry dated 2026-08-27 stated that `verify(receipt_json)` returns `valid: True` with an empty `signers` list. That was the behaviour of version 0.0.1 only. The current release at the time of that entry was 0.1.0, whose three-outcome API returns `status: "indeterminate"` and `valid: None` on a signed envelope called without `jwks_by_issuer`, and populates `indeterminate_reason` explaining that canonicalization recomputed but no key material was supplied. `None` is falsy, so `if result.valid:` on 0.1.0 fails closed. The fail-open path — `valid: True` on an unverified signature — was 0.0.1-only. The 2026-08-27 entry was written from a locally installed 0.0.1 without checking it against PyPI's current release. Both substantive corrections from that entry still stand on 0.1.0: signatures are checked only when `jwks_by_issuer` is supplied, and this document's earlier claim that the verifier fetches published JWKS was false. 0.1.0 documents these behaviours directly.
 ---
 
 ## Acknowledgements
