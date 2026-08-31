@@ -11,7 +11,7 @@ A signed, offline-verifiable receipt recording **what was checked before an agen
 | Signature | Ed25519 over JWS ([RFC 7515](https://datatracker.ietf.org/doc/html/rfc7515)), `alg: EdDSA` |
 | Multi-issuer | Yes — `signatures[]` accepts additional co-signers over identical canonical bytes |
 | IETF draft | [`draft-krausz-verification-state-01`](https://datatracker.ietf.org/doc/draft-krausz-verification-state) |
-| Independent implementations | 2 (one byte-identical, built from this spec text alone) |
+| Independent implementations | 1 byte-identical, built from this spec text alone — see [Implementations](#implementations) |
 | Conformance vectors | Published — see [Conformance](#conformance) |
 
 ---
@@ -69,7 +69,7 @@ A signature establishes who issued a determination, not whether that determinati
 Three properties narrow that gap. None closes it:
 
 - **Deterministic checks.** Where a check is mechanically re-runnable from the receipt's own inputs, "trust the issuer" is replaced by "re-run the check." A deterministic verification mode with six such check types and no model in the trust chain ships in the reference implementation.
-- **Multi-issuer composition.** `signatures[]` accepts co-signers over identical canonical bytes, so a consumer need not trust any single issuer. Two independent implementations have produced byte-identical canonical bytes from this spec text.
+- **Multi-issuer composition.** `signatures[]` accepts co-signers over identical canonical bytes, so a consumer need not trust any single issuer. The reference implementation and one independent implementation, built from this spec text alone, produce byte-identical canonical bytes.
 - **Non-evaluation is a first-class state.** The format distinguishes *"checked and could not establish"* from *"did not check."* An issuer that skipped a check cannot represent the result as a pass — see [Decision mapping](#decision-mapping).
 
 Consumers requiring a truth guarantee rather than an accountability guarantee should treat receipts as **evidence about process**, and apply their own policy on top.
@@ -224,7 +224,7 @@ Step 4 is what makes the receipt recomputable rather than merely authentic. Skip
 
 ## Conformance
 
-Conformance is validated against a published fixture set, with byte-identical recomputation confirmed across two independent issuers. Fixtures: [`agentoracle-v1` conformance set](https://github.com/giskard09/argentum-core/tree/main/examples/conformance/agentoracle-v1), merged 2026-06-17.
+Conformance is validated against a published fixture set, with byte-identical recomputation confirmed between the reference implementation and one independent implementation. Fixtures: [`agentoracle-v1` conformance set](https://github.com/giskard09/argentum-core/tree/main/examples/conformance/agentoracle-v1), merged 2026-06-17.
 
 `action_ref` derivation follows the canonical JCS + SHA-256 construction in [`draft-giskard-aeoess-action-ref`](https://github.com/giskard09/draft-giskard-aeoess-action-ref) over four preimage fields — `agent_id`, `action_type`, `scope`, `timestamp` (RFC 3339 UTC, exactly 3 fractional digits).
 
