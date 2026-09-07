@@ -331,7 +331,9 @@ def emit():
         spec_bases=dict(
             review_draft_sha256="9832156998ceb35f25d08c5be2d4d7c314477b25045f4499e07f3c5e501f5096",
             rev5_sha256="1f901fd7d56fcfe9f858446e5b685b540b5904d6abcfb4b2509e1eb675aa1e51",
-            spec_repo_head="49b7d039576b17e39dd707c9f223de5670c9be86",
+            review_draft_and_rev3_head="49b7d039576b17e39dd707c9f223de5670c9be86",
+            fixture_set_committed_at="45d959d01ba011e71fa6a1de515d4b75b3a7eaa6",
+            fixture_set_committed_note="cab4808700fa (rev 5 + fixture bundle) and 45d959d01ba0 (this fixture set) both post-date 49b7d039.",
         ),
         leaf_prefix="ao-evidence-leaf-v2",
         node_prefix="ao-evidence-node-v1",

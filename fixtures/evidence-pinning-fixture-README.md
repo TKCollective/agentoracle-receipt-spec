@@ -23,11 +23,18 @@ differences, integer widths, string comparison rules). It does **not** establish
 independence.
 
 **Independence for this section means a build from the specification text alone
-by a party with no access to these files.** For evidence-pinning that is Michael
-Beenz or Pablo, both of whom have working evidence-pinning implementations
-derived from the drafts alone. Neither has yet been asked to reproduce this
-fixture set; the second-implementation confirmation the section requires is
-still outstanding, and is the pre-filing blocker.
+by a party with no access to these files.** The party for whom that reading is
+being requested is **Michael Msebenzi** (`headlessoracle`). His prior work on
+receipt-verify grades draft-krausz-verification-state-01 §4.3, not the -02
+evidence set; a receipt-verify implementation of the -02 evidence-pinning
+section does not exist yet and is being built for this run. The
+second-implementation confirmation the section requires is still outstanding,
+and is the pre-filing blocker.
+
+Michael's correction 2026-09-07: the earlier sentence in this file said he and
+Pablo both had working -02 evidence-pinning implementations derived from the
+drafts alone. That was unsourced; withdrawn here. The name in this paragraph
+is Michael Msebenzi at his written request.
 
 Do not describe cross-language agreement here as independent implementation in
 any external message, changelog, deposit, or public artifact.
