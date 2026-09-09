@@ -1,0 +1,852 @@
+{
+  "header": {
+    "independence_disclosure": "This fixture set was produced by evidence-pinning-fixture-generator.py. The Node cross-check in evidence-pinning-fixture-crosscheck.mjs is authored by the same party. Agreement between the two is a cross-language check that catches language-specific defects (JSON ordering, UTF-8 handling, hash library differences). It is NOT an independent implementation. Independence for this section means a build from the specification text alone by a party with no access to these files.",
+    "leaf_member_encoding": "stated normatively in rev 2 Finding 1, scoped to the leaf preimage. Deliberately not restated here: evi-leaf-member-encoding verifies the choice (rev 7 Finding 34).",
+    "leaf_prefix": "ao-evidence-leaf-v2",
+    "node_child_encoding": "stated normatively in rev 6 Finding 27 (base l.101-104). Deliberately not restated here: evi-node-child-encoding verifies the choice, the specification states it (rev 7 Finding 34).",
+    "node_prefix": "ao-evidence-node-v1",
+    "spec_bases": {
+      "fixture_set_committed_at": "45d959d01ba011e71fa6a1de515d4b75b3a7eaa6",
+      "fixture_set_committed_note": "cab4808700fa (rev 5 + fixture bundle) and 45d959d01ba0 (this fixture set) both post-date 49b7d039.",
+      "rev5_sha256": "1f901fd7d56fcfe9f858446e5b685b540b5904d6abcfb4b2509e1eb675aa1e51",
+      "rev6_sha256": "d62ded37dcf63f541e5b670b0cc0f7876e04a182064eb06a32af0037effaf026",
+      "rev7_sha256": "6b13f6fc35d745c2642edcb52a2754f7cd43340ded3248b5d1ba70a431d6c037",
+      "review_draft_and_rev3_head": "49b7d039576b17e39dd707c9f223de5670c9be86",
+      "review_draft_sha256": "9832156998ceb35f25d08c5be2d4d7c314477b25045f4499e07f3c5e501f5096"
+    },
+    "title": "evidence-pinning conformance fixtures (v2 preimage, four-term sort, rev 7 rules)",
+    "vector_count": 32
+  },
+  "vectors": [
+    {
+      "computed": {
+        "root_1": "7f6addf189cd884e3be1919e470daeba0628bd7f84afefe1492f3fdcd86e4960",
+        "root_2": "7f6addf189cd884e3be1919e470daeba0628bd7f84afefe1492f3fdcd86e4960"
+      },
+      "designation": "CANONICAL ORDER",
+      "expect": "identical evidence_root",
+      "id": "evi-root-order-independent",
+      "input": {
+        "set_1": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          },
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753",
+            "url": "https://example.org/b"
+          }
+        ],
+        "set_2": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753",
+            "url": "https://example.org/b"
+          },
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          }
+        ]
+      }
+    },
+    {
+      "computed": {
+        "root": "d0cacaa281b5b0a46f8c2eb73c3100a15e5490d2c77ca542c4f9475886887bfd"
+      },
+      "designation": "ODD NODE",
+      "expect": "root matches promote-not-duplicate (three sorted leaves, third promoted unchanged)",
+      "id": "evi-root-odd-promotion",
+      "input": [
+        {
+          "content_kind": "snippet",
+          "pinned": true,
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+          "url": "https://example.org/a"
+        },
+        {
+          "content_kind": "snippet",
+          "pinned": true,
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "snippet_sha256": "f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753",
+          "url": "https://example.org/b"
+        },
+        {
+          "content_kind": "snippet",
+          "pinned": true,
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "snippet_sha256": "be9d587defa1f0c09ef49eb17e206983a5f8f8289e4281860bd0ee5a19592c67",
+          "url": "https://example.org/c"
+        }
+      ]
+    },
+    {
+      "computed": {
+        "counter_construction_root": "bf2676fc6d5c0b2588d230ee8451f4c9855080376525c0e64c46bbf285a1c58a",
+        "differ": true,
+        "normative_root": "7f6addf189cd884e3be1919e470daeba0628bd7f84afefe1492f3fdcd86e4960"
+      },
+      "designation": "NODE PREIMAGE",
+      "expect": "evidence_root MUST equal normative_root and MUST NOT equal counter_construction_root. The encoding is stated normatively in the specification and is deliberately not restated here.",
+      "id": "evi-node-child-encoding",
+      "input": {
+        "note": "two pinned items form exactly one interior node, so the node child encoding is observable on a concrete value",
+        "sources": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          },
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753",
+            "url": "https://example.org/b"
+          }
+        ]
+      }
+    },
+    {
+      "computed": {
+        "counter_construction_root": "154920df5849092538d5911db5b3cd8417c291c762fc65d81b8695833953b992",
+        "differ": true,
+        "normative_root": "35bc8fb1c853c3de6fa2a4fcacaa7223202fafa7bb5411595f167f21834160c3"
+      },
+      "designation": "LEAF PREIMAGE",
+      "expect": "evidence_root MUST equal normative_root and MUST NOT equal counter_construction_root. The encoding is stated normatively in the specification and is deliberately not restated here.",
+      "id": "evi-leaf-member-encoding",
+      "input": {
+        "entry": {
+          "content_kind": "snippet",
+          "pinned": true,
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+          "url": "https://example.org/a"
+        },
+        "note": "the leaf member encoding is observable on a concrete value; the counter-construction differs only in that encoding"
+      }
+    },
+    {
+      "computed": {
+        "differ": true,
+        "root_1": "35bc8fb1c853c3de6fa2a4fcacaa7223202fafa7bb5411595f167f21834160c3",
+        "root_2": "365973a6cd59577830d4340b3bbb22e2852f92734e2d74b52311a5790e6dad69"
+      },
+      "designation": "BINDING",
+      "expect": "roots differ",
+      "id": "evi-snippet-change-changes-root",
+      "input": {
+        "set_1": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          }
+        ],
+        "set_2": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "f997b00d1b42328662619d732b30e67a65147a22e82ced973d982587d5f6350d",
+            "url": "https://example.org/a"
+          }
+        ]
+      }
+    },
+    {
+      "computed": {
+        "differ": true,
+        "root_1": "35bc8fb1c853c3de6fa2a4fcacaa7223202fafa7bb5411595f167f21834160c3",
+        "root_2": "14adb6a20e3e205bfa4ab3dbbb1db2b133c55341117df91fcbba15664561bfd0"
+      },
+      "designation": "BINDING",
+      "expect": "roots differ; unnormalized bytes are normative",
+      "id": "evi-url-normalization-changes-root",
+      "input": {
+        "set_1": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          }
+        ],
+        "set_2": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://EXAMPLE.ORG/a"
+          }
+        ]
+      }
+    },
+    {
+      "computed": {
+        "identical": true,
+        "root_1": "b563b47601d6cd2b75fe01b9047001e5ce6cd42039f5e95c96d7942a13cc7512",
+        "root_2": "b563b47601d6cd2b75fe01b9047001e5ce6cd42039f5e95c96d7942a13cc7512"
+      },
+      "designation": "CANONICAL ORDER",
+      "expect": "deterministic order by the four-term key of §4.1.2; stable root",
+      "id": "evi-duplicate-url-distinct-digest",
+      "input": {
+        "set_1": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          },
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753",
+            "url": "https://example.org/a"
+          }
+        ],
+        "set_2": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753",
+            "url": "https://example.org/a"
+          },
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          }
+        ]
+      }
+    },
+    {
+      "computed": {
+        "differ": true,
+        "root_1": "35bc8fb1c853c3de6fa2a4fcacaa7223202fafa7bb5411595f167f21834160c3",
+        "root_2": "7125a9d8aff13aca214b2f8c3ac70412610164a108cebb502ca7f37644c40af2"
+      },
+      "designation": "LEAF PREIMAGE",
+      "expect": "evidence_root differs",
+      "id": "evi-leaf-binds-content-kind",
+      "input": {
+        "set_1": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          }
+        ],
+        "set_2": [
+          {
+            "content_kind": "full_resource",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          }
+        ]
+      }
+    },
+    {
+      "computed": {
+        "differ": true,
+        "root_1": "35bc8fb1c853c3de6fa2a4fcacaa7223202fafa7bb5411595f167f21834160c3",
+        "root_2": "5e085fc1bf9069bd8c344f44722827c9ed69d33866eda7ae16ba42cdf41a2e0e"
+      },
+      "designation": "LEAF PREIMAGE",
+      "expect": "evidence_root differs",
+      "id": "evi-leaf-binds-retrieved-at",
+      "input": {
+        "set_1": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          }
+        ],
+        "set_2": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-02T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          }
+        ]
+      }
+    },
+    {
+      "computed": {
+        "identical": true,
+        "root_1": "2b778cd5517219e86a10d4f8da3bd327c37982fbcd6aad32ad542bdb704d586c",
+        "root_2": "2b778cd5517219e86a10d4f8da3bd327c37982fbcd6aad32ad542bdb704d586c"
+      },
+      "designation": "CANONICAL ORDER",
+      "expect": "identical evidence_root both ways",
+      "id": "evi-order-tiebreak-content-kind",
+      "input": {
+        "set_1": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          },
+          {
+            "content_kind": "excerpt",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          }
+        ],
+        "set_2": [
+          {
+            "content_kind": "excerpt",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          },
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          }
+        ]
+      }
+    },
+    {
+      "computed": {
+        "identical": true,
+        "root_1": "ef067e8708b9b3fee310feab4dea16e5f20056aecf5362329ed8b449d635e4f3",
+        "root_2": "ef067e8708b9b3fee310feab4dea16e5f20056aecf5362329ed8b449d635e4f3"
+      },
+      "designation": "CANONICAL ORDER",
+      "expect": "identical evidence_root both ways",
+      "id": "evi-order-tiebreak-retrieved-at",
+      "input": {
+        "set_1": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          },
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-02T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          }
+        ],
+        "set_2": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-02T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          },
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          }
+        ]
+      }
+    },
+    {
+      "condition": "set_retrieved_at_not_first_in_canonical_order",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed",
+      "id": "evi-set-retrieved-at-not-earliest-rejects",
+      "input": {
+        "set_retrieved_at": "2026-09-02T12:00:00.000Z",
+        "sources": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          },
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-02T12:00:00.000Z",
+            "snippet_sha256": "f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753",
+            "url": "https://example.org/b"
+          }
+        ]
+      }
+    },
+    {
+      "condition": "content_kind_absent_when_pinned",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed; diagnostic names the missing member, not a root mismatch",
+      "id": "evi-content-kind-absent-when-pinned-rejects",
+      "input": {
+        "entry": {
+          "pinned": true,
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+          "url": "https://example.org/a"
+        }
+      }
+    },
+    {
+      "condition": "snippet_digest_present_for_full_resource",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed",
+      "id": "evi-resource-sha256-with-full-resource-rejects",
+      "input": {
+        "entry": {
+          "content_kind": "full_resource",
+          "pinned": true,
+          "resource_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+          "url": "https://example.org/a"
+        }
+      }
+    },
+    {
+      "condition": "pinned_set_empty",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed",
+      "id": "evi-empty-set-rejects",
+      "input": {
+        "evidence_set": {
+          "source_count": 0,
+          "sources": []
+        }
+      }
+    },
+    {
+      "condition": "duplicate_bound_tuple",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed",
+      "id": "evi-duplicate-bound-tuple-rejects",
+      "input": {
+        "sources": [
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          },
+          {
+            "content_kind": "snippet",
+            "pinned": true,
+            "retrieved_at": "2026-09-01T12:00:00.000Z",
+            "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+            "url": "https://example.org/a"
+          }
+        ]
+      }
+    },
+    {
+      "condition": "unpinned_reason_outside_domain",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed",
+      "id": "evi-unpinned-reason-outside-domain-rejects",
+      "input": {
+        "entry": {
+          "content_kind": null,
+          "pinned": false,
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "snippet_sha256": null,
+          "unpinned_reason": "content_not_retained",
+          "url": "https://example.org/a"
+        }
+      }
+    },
+    {
+      "condition": "unpinned_without_reason",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed",
+      "id": "evi-unpinned-without-reason-rejects",
+      "input": {
+        "entry": {
+          "content_kind": null,
+          "pinned": false,
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "snippet_sha256": null,
+          "url": "https://example.org/a"
+        }
+      }
+    },
+    {
+      "condition": "source_count_disagrees_with_sources",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed",
+      "id": "evi-source-count-mismatch-rejects",
+      "input": {
+        "evidence_set": {
+          "source_count": 3,
+          "sources": [
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+              "url": "https://example.org/a"
+            },
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753",
+              "url": "https://example.org/b"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "condition": "pinned_count_disagrees_with_pinned_entries",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed",
+      "id": "evi-count-inconsistency-rejects",
+      "input": {
+        "evidence_set": {
+          "pinned_count": 2,
+          "source_count": 2,
+          "sources": [
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+              "url": "https://example.org/a"
+            },
+            {
+              "content_kind": null,
+              "pinned": false,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": null,
+              "unpinned_reason": "no_content_returned",
+              "url": "https://example.org/b"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "condition": "root_present_with_zero_pinned",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed",
+      "id": "evi-root-with-zero-pinned-rejects",
+      "input": {
+        "evidence_set": {
+          "evidence_root": "0000000000000000000000000000000000000000000000000000000000000000",
+          "pinned_count": 0,
+          "sources": [
+            {
+              "content_kind": null,
+              "pinned": false,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": null,
+              "unpinned_reason": "no_content_returned",
+              "url": "https://example.org/a"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "condition": "root_null_with_pinned_entries",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed",
+      "id": "evi-nonzero-pinned-null-root-rejects",
+      "input": {
+        "evidence_set": {
+          "evidence_root": null,
+          "pinned_count": 1,
+          "sources": [
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+              "url": "https://example.org/a"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "computed": {
+        "correct_root": "35bc8fb1c853c3de6fa2a4fcacaa7223202fafa7bb5411595f167f21834160c3"
+      },
+      "condition": "root_not_recomputable_from_sources",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed",
+      "id": "evi-root-mismatch-rejects",
+      "input": {
+        "evidence_set": {
+          "evidence_root": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "pinned_count": 1,
+          "sources": [
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+              "url": "https://example.org/a"
+            }
+          ]
+        },
+        "note": "the correct root for this input is in computed, not here: it is a normative root and belongs on the excluded side of the airlock"
+      }
+    },
+    {
+      "designation": "EMPTY",
+      "expect": "evidence_root null; receipt well-formed",
+      "id": "evi-empty-root-null",
+      "input": {
+        "evidence_set": {
+          "pinned_count": 0,
+          "source_count": 1,
+          "sources": [
+            {
+              "content_kind": null,
+              "pinned": false,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": null,
+              "unpinned_reason": "no_content_returned",
+              "url": "https://example.org/a"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "designation": "ADDITIVE",
+      "expect": "unknown; MUST NOT halt",
+      "id": "evi-absent-unknown",
+      "input": {
+        "receipt_shape": "no evidence_set member present"
+      }
+    },
+    {
+      "designation": "COMPLETENESS",
+      "expect": "step resolves unknown; must_not: [\"valid\"] on the offline-recompute claim",
+      "id": "evi-partial-resolves-unknown",
+      "input": {
+        "evidence_set": {
+          "fully_pinned": false,
+          "pinned_count": 2,
+          "source_count": 3,
+          "sources": [
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+              "url": "https://example.org/a"
+            },
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753",
+              "url": "https://example.org/b"
+            },
+            {
+              "content_kind": null,
+              "pinned": false,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": null,
+              "unpinned_reason": "no_content_returned",
+              "url": "https://example.org/c"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "designation": "COMPLETENESS",
+      "expect": "receipt core-valid; NOT malformed; MUST NOT halt",
+      "id": "evi-declared-partial-is-not-invalid",
+      "input": {
+        "evidence_set": {
+          "fully_pinned": false,
+          "pinned_count": 2,
+          "source_count": 3,
+          "sources": [
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+              "url": "https://example.org/a"
+            },
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753",
+              "url": "https://example.org/b"
+            },
+            {
+              "content_kind": null,
+              "pinned": false,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": null,
+              "unpinned_reason": "no_content_returned",
+              "url": "https://example.org/c"
+            }
+          ]
+        }
+      },
+      "note": "pair with evi-partial-resolves-unknown; rev 4 pair rule stands"
+    },
+    {
+      "designation": "UNKNOWN",
+      "expect": "unknown; MUST NOT halt; per-item reason content_differs (MUST per rev 5 Finding 17)",
+      "id": "evi-content-mismatch-unknown",
+      "input": {
+        "entry": {
+          "content_kind": "snippet",
+          "pinned": true,
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+          "url": "https://example.org/a"
+        },
+        "verifier_holds_bytes_for": "https://example.org/a",
+        "verifier_recomputed_sha256": "25e4a8b4235b9eb87928e6bef70ea8d318e31ec5f0be0b8665c95c94cfefe8dd"
+      }
+    },
+    {
+      "designation": "UNKNOWN",
+      "expect": "unknown; per-item reason content_not_held (MUST per rev 5 Finding 17)",
+      "id": "evi-content-not-held-unknown",
+      "input": {
+        "entry": {
+          "content_kind": "snippet",
+          "pinned": true,
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+          "url": "https://example.org/a"
+        },
+        "verifier_holds_bytes_for": null
+      }
+    },
+    {
+      "computed": {
+        "evidence_root": "7f6addf189cd884e3be1919e470daeba0628bd7f84afefe1492f3fdcd86e4960"
+      },
+      "designation": "RESOLUTION",
+      "expect": "step resolves `resolved` (rev 6 Finding 29): not `unknown`, not a halt",
+      "id": "evi-step-resolves-affirmatively",
+      "input": {
+        "content_matches": true,
+        "evidence_set": {
+          "pinned_count": 2,
+          "source_count": 2,
+          "sources": [
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+              "url": "https://example.org/a"
+            },
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753",
+              "url": "https://example.org/b"
+            }
+          ]
+        },
+        "verifier_holds_bytes_for": [
+          "https://example.org/a",
+          "https://example.org/b"
+        ]
+      }
+    },
+    {
+      "designation": "ADDITIVE",
+      "expect": "accepted; an omitted member is equivalent to an explicit null on an unpinned entry (rev 6 Finding 30). Not root-bearing: see rev 7 Finding 33b.",
+      "id": "evi-unpinned-members-absent-accepted",
+      "input": {
+        "evidence_set": {
+          "pinned_count": 1,
+          "source_count": 2,
+          "sources": [
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+              "url": "https://example.org/a"
+            },
+            {
+              "pinned": false,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "unpinned_reason": "no_content_returned",
+              "url": "https://example.org/b"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "condition": "retrieved_at_not_canonical_form",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed; reported condition equals retrieved_at_not_canonical_form",
+      "id": "evi-retrieved-at-noncanonical-rejects",
+      "input": {
+        "entry": {
+          "content_kind": "snippet",
+          "pinned": true,
+          "retrieved_at": "2026-09-01T12:00:00Z",
+          "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+          "url": "https://example.org/a"
+        }
+      }
+    }
+  ]
+}
