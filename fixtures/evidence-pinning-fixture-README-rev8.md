@@ -116,7 +116,7 @@ pass (below).
 | `drafts/evidence-pinning-02-amendments-rev5-2026-09-06.md` | `1f901fd7d56fcfe9f858446e5b685b540b5904d6abcfb4b2509e1eb675aa1e51` | 14,631 | 256 |
 | `drafts/evidence-pinning-02-amendments-rev6-2026-09-08.md` | `d62ded37dcf63f541e5b670b0cc0f7876e04a182064eb06a32af0037effaf026` | 21,968 | 412 |
 | `drafts/evidence-pinning-02-amendments-rev7-2026-09-09.md` | `6b13f6fc35d745c2642edcb52a2754f7cd43340ded3248b5d1ba70a431d6c037` | 17,732 | 296 |
-| `drafts/evidence-pinning-02-amendments-rev8-2026-09-11.md` (**final, this pass**) | `c42928e6b08f30828d7664f1abcb737431a13cbd19650b64e85b2365cc04636c` | 46,420 | 642 |
+| `drafts/evidence-pinning-02-amendments-rev8-2026-09-17.md` (**final, this pass**) | `6a1ca7844396055e4a2b76dd925cc623f0e530885c50b16f747b51e6a0aaecad` | 46,643 | 645 |
 
 **The pin is one-directional: rev 8 must be final before the fixture is generated, and editing rev
 8 afterwards leaves the pin stale and requires regeneration.** This pass's own history is the
@@ -184,7 +184,7 @@ amendments document, before this README's digest was written.**
 ```
 # 1. confirm the generator's pinned rev 8 digest matches the amendments document
 grep -o 'rev8_sha256="[a-f0-9]*"' evidence-pinning-fixture-generator-rev8.py
-sha256sum evidence-pinning-02-amendments-rev8-2026-09-11.md
+sha256sum evidence-pinning-02-amendments-rev8-2026-09-17.md
 
 # 2. generate
 python3 evidence-pinning-fixture-generator-rev8.py > evidence-pinning-fixtures-v2-rev8.json
@@ -194,7 +194,7 @@ node evidence-pinning-fixture-crosscheck-rev8.mjs --check evidence-pinning-fixtu
 ```
 
 Step 1 prints the same 64-hex value twice:
-`c42928e6b08f30828d7664f1abcb737431a13cbd19650b64e85b2365cc04636c`.
+`6a1ca7844396055e4a2b76dd925cc623f0e530885c50b16f747b51e6a0aaecad`.
 
 Step 2 exits 0 and emits a file byte-identical to the shipped
 `evidence-pinning-fixtures-v2-rev8.json` — verified with `cmp` in the clean directory. Emission is
@@ -213,14 +213,14 @@ Step 3 exits 0 and reports:
 ```
 
 Reference `evidence-pinning-fixtures-v2-rev8.json` sha256:
-`b576cb520d0e813e1f792e3d819f8974d8fa2f530745aeeacaf5cdeb50fbf928` — 44,937 bytes, 1,185 lines.
+`6ac833edc7e8b915f9962cbc86043f088a1e944c8092a0a494f805dd65bb62b5` — 44,937 bytes, 1,185 lines.
 
 | Artifact | sha256 |
 |---|---|
-| `evidence-pinning-fixtures-v2-rev8.json` | `b576cb520d0e813e1f792e3d819f8974d8fa2f530745aeeacaf5cdeb50fbf928` |
-| `evidence-pinning-fixture-generator-rev8.py` | `519033c9b357f05bc16d1b3477a0c120cfc1475b8e68488db1b096dfd6afdb86` |
+| `evidence-pinning-fixtures-v2-rev8.json` | `6ac833edc7e8b915f9962cbc86043f088a1e944c8092a0a494f805dd65bb62b5` |
+| `evidence-pinning-fixture-generator-rev8.py` | `c6341e964f33c9d25f3a8872787d467157148c9c640a9760329d403752188ed9` |
 | `evidence-pinning-fixture-crosscheck-rev8.mjs` | `310553635ef14b0d2ad2f10e650c5442ad79aeb953da67b3048ba59bbfeb7251` |
-| `drafts/evidence-pinning-02-amendments-rev8-2026-09-11.md` | `c42928e6b08f30828d7664f1abcb737431a13cbd19650b64e85b2365cc04636c` |
+| `drafts/evidence-pinning-02-amendments-rev8-2026-09-17.md` | `6a1ca7844396055e4a2b76dd925cc623f0e530885c50b16f747b51e6a0aaecad` |
 
 ## The fail paths were exercised, not assumed
 

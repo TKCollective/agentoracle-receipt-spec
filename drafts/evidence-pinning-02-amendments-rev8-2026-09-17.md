@@ -25,12 +25,15 @@ prefix, and the four-term sort key all stand.
 
 **Cut against** `main` at `3d0ec0e82229c1336340f0323d54904e5baf38b2`.
 
-**No new filename for this closing pass.** The rev 7→rev 8 boundary already took the filename bump
-(below) for the reading change ruled in Findings 35–37. Findings 40–46 land inside the still-unfiled
-rev 8 — nothing with rev 8's name and this content has been read by a third party as conformant yet,
-so there is no prior surface to silently redefine. The rename that matters is the one already taken;
-completing a held-but-unpublished revision is the defect-fix case in the sense of the filename
-convention, and reuses the name. A future rev 9 would take its own new filename.
+**No revision-number bump for this closing pass.** The rev 7→rev 8 boundary already took the
+semantics-change rename (below) for the reading change ruled in Findings 35–37. Findings 40–46 land
+inside the still-unfiled rev 8 — nothing with rev 8's name and this content has been read by a third
+party as conformant yet, so there is no prior surface to silently redefine. Completing a
+held-but-unpublished revision is the defect-fix case in the sense of the filename convention, and
+reuses the revision number. The filename's date suffix carries this pass's cut date, 2026-09-17, the
+same convention rev 7's filename took at its own cut date (2026-09-09) — the suffix names when the
+revision was cut, not when it was opened. A future rev 9 would take its own new filename and its own
+cut-date suffix.
 
 **New filename per `semantics_change_new_filename.md`, taken at rev 7→rev 8.** This revision changes
 what a conformant implementation is checked against: two rules move from a pinned-only reading to a

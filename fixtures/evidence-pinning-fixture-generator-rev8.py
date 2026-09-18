@@ -19,8 +19,8 @@
 #     sha256 d62ded37dcf63f541e5b670b0cc0f7876e04a182064eb06a32af0037effaf026
 #   drafts/evidence-pinning-02-amendments-rev7-2026-09-09.md
 #     sha256 6b13f6fc35d745c2642edcb52a2754f7cd43340ded3248b5d1ba70a431d6c037
-#   drafts/evidence-pinning-02-amendments-rev8-2026-09-11.md
-#     (rev 8; digest recorded in the emitted header at build time)
+#   drafts/evidence-pinning-02-amendments-rev8-2026-09-17.md
+#     sha256 6a1ca7844396055e4a2b76dd925cc623f0e530885c50b16f747b51e6a0aaecad
 #
 # THIS FILE IS NOT AN INDEPENDENT IMPLEMENTATION.
 # The companion evidence-pinning-fixture-crosscheck-rev8.mjs is authored by the same party as this
@@ -917,7 +917,7 @@ def emit():
             rev5_sha256="1f901fd7d56fcfe9f858446e5b685b540b5904d6abcfb4b2509e1eb675aa1e51",
             rev6_sha256="d62ded37dcf63f541e5b670b0cc0f7876e04a182064eb06a32af0037effaf026",
             rev7_sha256="6b13f6fc35d745c2642edcb52a2754f7cd43340ded3248b5d1ba70a431d6c037",
-            rev8_sha256="c42928e6b08f30828d7664f1abcb737431a13cbd19650b64e85b2365cc04636c",
+            rev8_sha256="6a1ca7844396055e4a2b76dd925cc623f0e530885c50b16f747b51e6a0aaecad",
             rev8_base_commit="3d0ec0e82229c1336340f0323d54904e5baf38b2",
             review_draft_and_rev3_head="49b7d039576b17e39dd707c9f223de5670c9be86",
             fixture_set_committed_at="45d959d01ba011e71fa6a1de515d4b75b3a7eaa6",
