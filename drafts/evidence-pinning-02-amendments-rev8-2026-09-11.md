@@ -1,12 +1,15 @@
 # Evidence pinning — amendments rev 8 for `draft-krausz-verification-state-02`
 
-**Status: DRAFT amendments for review. Not filed. Not implemented. HELD — not final.**
+**Status: FINAL. Cut as rev 8, in one revision. Not filed, not pushed — filing is -02's step, gated
+separately below.**
 
-**Held deliberately.** Michael Msebenzi reported that the two scope questions ruled here are two of
-**seven** all-versus-pinned scope choices he found in this text; he named one more (Finding 38
-below) and holds five. This revision rules on the three he named and **reserves the remaining
-five**, which are listed as open below with no ruling attached. Rev 8 is not final until they land.
-Ruling all seven in one revision beats shipping rev 8 and finding a seventh scope choice next week.
+**Opened 2026-09-11, held for Michael Msebenzi's remaining scope choices, closed 2026-09-17 when
+his full seven-item report landed.** The held draft ruled three of seven all-versus-pinned scope
+choices (Findings 35–37) and reserved the rest. This revision rules the remaining five
+(Findings 41–45), adds the premise that makes "pinned and unpinned alike" a sound reading of any of
+them (Finding 40, the three-valued MUST), and adds one further defect his report surfaced in the
+same pass (Finding 46, the null-snippet halt condition). **All eight items land in this one
+revision, as instructed — not split across rev 8 and a later rev.**
 
 **Replaces** `evidence-pinning-02-amendments-rev7-2026-09-09.md` (sha256
 `6b13f6fc35d745c2642edcb52a2754f7cd43340ded3248b5d1ba70a431d6c037`, 17,732 bytes, 296 lines),
@@ -22,44 +25,80 @@ prefix, and the four-term sort key all stand.
 
 **Cut against** `main` at `3d0ec0e82229c1336340f0323d54904e5baf38b2`.
 
-**New filename per `semantics_change_new_filename.md`.** This revision changes what a conformant
-implementation is checked against: two rules move from a pinned-only reading to a
-whole-of-`sources` reading, two condition identifiers are renamed, and four vectors are added that
-a rev 7-conformant implementation reading those rules as pinned-only **passes today and fails
-here**. Rev 7 and rev 8 are not interchangeable.
+**No new filename for this closing pass.** The rev 7→rev 8 boundary already took the filename bump
+(below) for the reading change ruled in Findings 35–37. Findings 40–46 land inside the still-unfiled
+rev 8 — nothing with rev 8's name and this content has been read by a third party as conformant yet,
+so there is no prior surface to silently redefine. The rename that matters is the one already taken;
+completing a held-but-unpublished revision is the defect-fix case in the sense of the filename
+convention, and reuses the name. A future rev 9 would take its own new filename.
+
+**New filename per `semantics_change_new_filename.md`, taken at rev 7→rev 8.** This revision changes
+what a conformant implementation is checked against: two rules move from a pinned-only reading to a
+whole-of-`sources` reading, two condition identifiers are renamed, and vectors are added that a
+rev 7-conformant implementation reading those rules as pinned-only **passes today and fails here**.
+Rev 7 and rev 8 are not interchangeable.
 
 ---
 
 ## Why this revision exists
 
-**Both open questions are set-level rules expressed in §4.1.2's pinned-only vocabulary, and the fix
-is to stop borrowing it.** §4.1.2 defines one thing — a sort over pinned leaves, because only
-pinned entries have leaves — and it defines it well. Three later rules that range over `sources`
-were then written in its words: "identical across the members bound by the leaf preimage,"
-"first in canonical order," "the condition name `pinned_set_empty`." Each borrowed phrase silently
-narrowed a set-level rule to the pinned subset, and each is repaired the same way: state the rule
-in its own terms, over `sources`, and cite §4.1.2 only where a sort over leaves is actually meant.
+**Both open questions ruled first (Findings 35–37) are set-level rules expressed in §4.1.2's
+pinned-only vocabulary, and the fix is to stop borrowing it.** §4.1.2 defines one thing — a sort over
+pinned leaves, because only pinned entries have leaves — and it defines it well. Three later rules
+that range over `sources` were then written in its words: "identical across the members bound by the
+leaf preimage," "first in canonical order," the condition name `pinned_set_empty`. Each borrowed
+phrase silently narrowed a set-level rule to the pinned subset, and each is repaired the same way:
+state the rule in its own terms, over `sources`, and cite §4.1.2 only where a sort over leaves is
+actually meant.
 
-This is not two independent judgement calls. It is one drafting habit with three instances, which
-is why the ruling is the same in all three and why Finding 38's rename belongs in the same
-revision rather than in a housekeeping pass.
+**The five remaining choices (Findings 41–45) are the same habit, one level down.** Where Findings
+35–37 are about which entries a *set-level comparison* ranges over, Findings 41–45 are about which
+entries a *derivation* falls back to when a declared count or flag is absent: `fully_pinned` (check
+5), the root-presence checks (checks 12/13), `resolveEvidenceSet`'s carried triple, and step (d)'s
+per-item reasons all have a stated rule for the declared case and are silent on the absent one. The
+same repair applies — derive from `sources` itself rather than leaving a gap — but the repair is only
+sound because of Finding 40: without a closed `pinned` domain, "derive from the entries themselves"
+does not have a well-defined pinned/unpinned split to derive over.
 
-**How the questions arrived.** Michael Msebenzi (`headlessoracle` in the findings ledgers) reported
-on 2026-09-11 that his rev 7 implementation reads both rules over the full set, and gave the code:
-`tools/evidence-root.ts` check 11 iterates `set.sources` with the four-member bound tuple, and for
-an unpinned entry the key collapses so two unpinned entries sharing `url` and `retrieved_at` halt
-with `duplicate_bound_tuple`. Pablo Play, reading the same text, took the pinned-only reading on
-the entry-identity rule. **Both implementations pass all 32 rev 7 vectors.** Verified against the
-rev 7 ledger: its only duplicate pair is two pinned entries, its only non-canonical `retrieved_at`
-is on a pinned entry, and its one set-level `retrieved_at` comparison has both entries pinned.
-Nothing in the shipped set distinguishes the readings, so the set agreed with both and neither
-implementer was wrong to ship. That is a specification defect, not an implementation defect.
+**Finding 40 is the premise underneath all of it, not a seventh instance of the same class.** Every
+rule this revision or rev 7 states as "every entry, pinned and unpinned alike" presumes exactly two
+buckets. Nothing in base through rev 7 requires `pinned` to be present or requires it to be a JSON
+boolean. An entry that omits it, or spells it as the string `"true"`, is neither bucket — and a
+conforming implementation that branches on `pinned === true` / `pinned === false` (the pattern in
+`tools/evidence-root.ts`) treats that entry as the `false` branch by default, which is silent
+scope-widening in the opposite direction from Findings 35–37's silent narrowing. Finding 40 closes it
+before Findings 41–45 need it to be closed.
 
-**What is not claimed for this run.** Michael's rev 7 result is confirmed-by-extension of his
-earlier build, not an independent cold build, and rev 7's open item 2 stands unchanged: no
-revision of this section has yet had an independent implementation in the sense the README defines,
-and -02 must not claim one. The four counterfactual variant builds he reported are **not committed
-at his tip** `4689b38` as of this writing; the ledger below records the finding, not the run.
+**Finding 46 is a defect this revision found while proving Finding 40's fixtures, not a scope
+choice.** A pinned entry with `snippet_sha256` null or absent is not rejected by either check in
+`validateEvidenceSet`'s pinned branch (checks 9–10 are the whole of it, and neither tests
+`snippet_sha256`), and the omission is only discovered three functions later, as an uncaught
+exception in `leafHash` whose message ("an unpinned entry has no leaf") misattributes the fault to
+the wrong branch. Reproduced live against `tools/evidence-root.ts`. base l.99–100 already requires
+the member on a pinned entry; the gap is that nothing enforces it as a halt at validation time.
+
+**How the questions arrived.** Michael Msebenzi (`headlessoracle` / `LembaGang` in the findings
+ledgers) reported on 2026-09-11 that his rev 7 implementation reads the entry-identity and
+set-level-`retrieved_at` rules over the full set, and gave the code: `tools/evidence-root.ts` check
+11 iterates `set.sources` with the four-member bound tuple, and for an unpinned entry the key
+collapses so two unpinned entries sharing `url` and `retrieved_at` halt with `duplicate_bound_tuple`.
+Pablo Play, reading the same text, took the pinned-only reading on the entry-identity rule. **Both
+implementations passed all 32 rev 7 vectors.** He returned on 2026-09-17 with the remaining five
+scope questions (checks 5, 10, 12/13, `resolveEvidenceSet`, step (d)), the two implementation
+defects (check 4 unreachable; the null-snippet exception), confirmation that F24, F32a, and F32b
+still hold against his current tip, a report of three committed counterfactual variant builds at
+commit `77381b9`, and closed with the three-valued-`pinned` finding.
+
+**What is now confirmed for this run, updated from the held draft.** The held draft (2026-09-11)
+recorded that the four counterfactual variant builds were reported but "not committed at his tip
+`4689b38`." They are now committed, at `77381b9` in `LembaGang/receipt-verify`, co-authored by
+"Claude Opus 5 (1M context)": three counterfactual builds (f24, f32a, f32b), all producing a
+byte-identical output digest `d461aaf4d6e4964d4176a3f9f717d49b8faf506bb772df350f8229760e50e451`
+(git blob `1c8d207a…`), independently re-verified this pass — `npm install` in a clean checkout,
+all three builds and probes executed, 3/3 probes hold, and the negative control correctly fails when
+one of the three values is reverted. **What is still not claimed:** this is a confirmed-by-extension
+run against his existing implementation, not an independent from-text cold build. Pablo Play's
+cold-build reconstruction remains the open filing gate — see "What remains open" below.
 
 ---
 
@@ -108,6 +147,17 @@ executed verbatim from a clean checkout before the digest was written**, which i
 that holds; E-2 was corrected once by re-writing a digest by hand and the defect returned two
 revisions later.
 
+## Note — check 4 in the reviewed implementation is dead code, not a scope decision
+
+Michael reported check 4 (`pinned_count` exceeds `source_count`, `tools/evidence-root.ts` l.352–358)
+as unreachable, given checks 2 (l.340) and 3 (l.347) already halt on any input that would trigger it,
+and reports it deleted from his tree. **This is not a rule this specification states and now
+retracts.** Nothing in base through rev 7 names a `pinned_count`-exceeds-`source_count` condition
+independent of checks 2/3's own triggers, and no vector in any revision through rev 8 targets one.
+The deletion is informational about the reviewed implementation's own code health, not a spec
+amendment, and this document makes no normative change on account of it. Recorded here so it is not
+mistaken later for a dropped requirement.
+
 ---
 
 ## Finding 35 — the entry-identity rule ranges over every entry in `sources`
@@ -149,8 +199,8 @@ means that a pinned entry and an unpinned entry sharing `url` and `retrieved_at`
 retrieval recorded twice: the qualifier is not met, so `url` with `retrieved_at` decides, and the
 set halts. That is the fail-closed reading and it is intended — an issuer that pinned an item and
 also reported it as unpinned has overstated `source_count` either way. **No vector in this revision
-covers that pair**, and it is a candidate for the reserved findings below rather than something
-rev 8 claims to have exercised.
+covers that pair**, and it remains a candidate for a future revision rather than something rev 8
+claims to have exercised.
 
 **What does not change.** Rev 5's distinction between duplication and repeated retrieval stands:
 two entries sharing `url`, `snippet_sha256`, and `content_kind` and differing in `retrieved_at`
@@ -234,7 +284,7 @@ adds a row; it never silently replaces a value.
 
 ## Finding 39 — condition identifiers are not one-per-vector, and rev 7's build asserted that they were
 
-Not a scope choice and not reported by a reviewer: found while building rev 8's set, and recorded
+Not a scope choice and not reported by a reviewer: found while building rev 8, and recorded
 because it changes a shipped build assertion.
 
 Rev 7's Finding 33 requires that every `MALFORMED` vector name **exactly one** condition. Correct,
@@ -242,11 +292,14 @@ and unchanged. Alongside it, the rev 7 generator and cross-check also assert tha
 name the same condition** — which was true of the rev 7 set by accident of construction, one vector
 having been written per condition, and was never stated as a rule.
 
-Rev 8's set makes it false on purpose. Three of the four new vectors inject an already-vectored
-condition on a **different entry class**: `duplicate_bound_tuple` on two unpinned entries,
-`retrieved_at_not_canonical_form` on an unpinned entry, `set_retrieved_at_not_bytewise_least` with
-the lesser value on an unpinned entry. Injecting the same condition from a different direction is
-exactly how a scope rule gets covered, so the uniqueness assertion would fail a correct set.
+Rev 8's set makes it false on purpose, and this closing pass makes it false again in a new place:
+the original four rev-8 vectors inject an already-vectored condition on a different entry class
+(`duplicate_bound_tuple` on two unpinned entries; `retrieved_at_not_canonical_form` on an unpinned
+entry; `set_retrieved_at_not_bytewise_least` with the lesser value on an unpinned entry), and
+Finding 42 below does the same thing again: `snippet_digest_present_for_full_resource` is named by
+both the existing pinned vector and the new unpinned one. Injecting the same condition from a
+different direction is exactly how a scope rule gets covered, so the uniqueness assertion would
+fail a correct set.
 
 **Amendment.** The uniqueness assertion is **withdrawn**. Every `MALFORMED` vector still names
 exactly one condition; a condition may be named by more than one vector; and what replaces
@@ -255,79 +308,264 @@ The condition-enumeration diff that rev 7 opens for rev 8 is unaffected — it c
 named conditions against the enumeration in the specification text, and a set does not care how
 many vectors reach each member.
 
+## Finding 40 — `pinned` is REQUIRED and MUST be exactly `true` or `false`: the third case is closed
+
+Base through rev 7 never state that `pinned` must be present on a `sources` entry, nor that it must
+be a JSON boolean. Michael's report: a conforming implementation branching `pinned === true` /
+`pinned === false` (his read of `tools/evidence-root.ts` l.256, l.344, l.533 for the true branch and
+l.393 for the false branch) treats an entry that omits `pinned`, or spells it non-booleanly (for
+example the string `"true"`), as falling through to the `false` branch by default — not as a halt.
+
+**This is the premise every "pinned and unpinned alike" rule in this document depends on.** Findings
+35–37, already ruled above, and Findings 41–45 below all state a rule "over every entry, pinned and
+unpinned alike." That phrasing is sound only if every entry is provably one or the other. Without
+this finding, "alike" silently presumes a binary the corpus never actually stated, and an entry with
+`pinned` absent is neither counted nor excluded by any of those rules — it is simply unaddressed.
+
+**Amendment — add to base §4.1.1 (per-entry members, base l.83–103):**
+
+> `pinned` is a REQUIRED member of every entry in `sources` and MUST be exactly the JSON value
+> `true` or `false`. An entry where `pinned` is absent, `null`, or of any type other than boolean is
+> malformed; gate decision = halt; reported condition `pinned_absent_or_not_boolean`. This closes
+> the domain of `pinned` to exactly two values before any rule that branches on it, or that is
+> stated as ranging "over every entry, pinned and unpinned alike," is evaluated — including
+> Findings 35–37 above and Findings 41–45 below, none of which are well-defined against a `pinned`
+> domain that admits a third, unaddressed case.
+
+**Vectors:** `evi-pinned-absent-rejects` (the member omitted entirely) and
+`evi-pinned-not-boolean-rejects` (`pinned: "true"`, a JSON string, not a boolean). Both `MALFORMED`,
+both reporting `pinned_absent_or_not_boolean`. One condition, because the trigger — `pinned` is not
+exactly the boolean `true` or the boolean `false` — is one predicate over one member; splitting it
+into two condition identifiers would name the two ways to fail the predicate rather than the
+predicate itself, which Finding 34 already forbids.
+
+## Finding 41 — `fully_pinned`'s consistency check falls back to the entries when its operands are absent (was check 5)
+
+Rev 2 l.180–181 (base l.74) states `fully_pinned`'s consistency against `source_count` and
+`pinned_count` when both are declared, and is silent on the case where one or both are absent.
+`tools/evidence-root.ts` check 5 (l.363–364) reads the declared members only, so an evidence set that
+omits `source_count` and `pinned_count` and declares `fully_pinned` skips the check entirely rather
+than falling back to a value it could still verify.
+
+**The fallback is well-defined only because of Finding 40.** `source_count`, when absent, is
+`len(sources)` — unconditionally, since `sources` always has a length regardless of what any entry's
+`pinned` says. `pinned_count`, when absent, is the count of entries with `pinned: true` — and this
+count is well-defined, rather than undercounting an ambiguous third bucket, exactly because Finding
+40 has already closed `pinned` to two values.
+
+**Amendment — add to rev 2's fully_pinned consistency text (base l.74, rev 2 l.180–181):**
+
+> When `source_count` is absent from the evidence set, its operand for this check is
+> `len(sources)`. When `pinned_count` is absent, its operand is the count of entries in `sources`
+> with `pinned: true` (well-defined per Finding 40). `fully_pinned`'s consistency is checked
+> against these derived operands whenever the corresponding declared member is absent; the check is
+> not skipped for want of a declared count.
+
+**Vector:** `evi-fully-pinned-fallback-derives-from-sources-accepted`, `ADDITIVE`. Three entries
+(two pinned, one unpinned), `source_count` and `pinned_count` both omitted, `fully_pinned: false`
+declared. Derived operands are `source_count=3`, `pinned_count=2`; `fully_pinned=false` is
+consistent with a non-fully-pinned set, and the set is accepted, not malformed for want of the
+declared counts.
+
+## Finding 42 — the full-resource/resource_sha256 rule ranges over every entry, and the rev 7 set only exercised the pinned branch (was check 10)
+
+Rev 4 l.249–254 (Finding 19) states that a `content_kind` of `full_resource` together with a
+non-null `resource_sha256` is malformed, and names no pinned-only restriction — the rule is one
+about what `content_kind` and `resource_sha256` may say together, not about `pinned`. `Michael's
+tools/evidence-root.ts` check 10 (l.418–424) sits after the unpinned branch's `continue` at l.402,
+so an unpinned entry that nonetheless carries `content_kind: "full_resource"` and a non-null
+`resource_sha256` never reaches the check that would reject it — not because the rule excludes
+unpinned entries, but because of where the check is placed in his implementation.
+
+**This is the pinned-only-placement class, not a new rule.** The condition being tested —
+`content_kind` says `full_resource` while a resource digest is also present — does not mention
+`pinned` at all, and Finding 40 makes an unpinned entry's `content_kind`/`resource_sha256` members
+just as determinate as a pinned entry's, so F19 applies to it unchanged.
+
+**Amendment — amend rev 4's Finding 19 text (base l.249–254) to state explicitly:**
+
+> This rule ranges over every entry in `sources` regardless of `pinned`. `content_kind` and
+> `resource_sha256` are per-entry members whose joint value this rule constrains directly; nothing
+> in the rule's own statement is conditioned on `pinned`, and an implementation MUST evaluate it for
+> an unpinned entry exactly as for a pinned one.
+
+**Vector:** `evi-full-resource-digest-on-unpinned-rejects`, `MALFORMED`, reporting
+`snippet_digest_present_for_full_resource` — the same condition identifier as the existing pinned
+vector `evi-resource-sha256-with-full-resource-rejects` (Finding 39's reuse pattern), now injected on
+an unpinned entry that an implementation placing the check inside the pinned branch would not reach.
+
+## Finding 43 — the root-presence checks fall back to the entries when `pinned_count` is absent (was checks 12/13)
+
+Base l.139–140 and rev 2 l.186–188 state the zero-pinned/nonzero-pinned root rules against the
+*declared* `pinned_count` and are silent on an absent one. The operand, when `pinned_count` is
+absent, is the same fallback as Finding 41: the count of entries with `pinned: true`,
+well-defined by Finding 40.
+
+**Amendment — add to base l.139–140 / rev 2 l.186–188:**
+
+> When `pinned_count` is absent from the evidence set, both this rule and the nonzero-pinned/null-
+> root rule at rev 2 l.186–188 take their `pinned_count` operand as the count of entries in
+> `sources` with `pinned: true` (Finding 40). A non-null `evidence_root` with a derived
+> `pinned_count` of zero is `root_present_with_zero_pinned`; a null `evidence_root` with a derived
+> `pinned_count` greater than zero is `root_null_with_pinned_entries`. Neither rule is skipped for
+> want of a declared `pinned_count`.
+
+**Vector:** `evi-root-present-pinned-count-absent-accepted`, `ADDITIVE`. Two entries (one pinned, one
+not), `pinned_count` omitted, `evidence_root` present and equal to the correct root over the pinned
+entry alone (checked against `computed.correct_root`, recomputed independently by the Node
+cross-check). Derived `pinned_count` is 1, nonzero, so a non-null root is accepted rather than
+flagged as a zero-pinned violation.
+
+## Finding 44 — `resolveEvidenceSet` derives all three carried members from the entries when they are absent (was resolveEvidenceSet's triple fallback)
+
+Rev 2 l.190–193 speaks of a *carried* `fully_pinned` at the resolution step and states no derivation
+for an absent one. `tools/evidence-root.ts`'s `resolveEvidenceSet` (l.533–536) reads `source_count`,
+`pinned_count`, and `fully_pinned` as carried inputs; when all three are absent, resolution has
+nothing to carry and — per Michael's report — the implementation does not derive them, leaving the
+step without the values Findings 41 and 43 already establish are derivable.
+
+**Same derivation shape as Findings 41 and 43, now at the resolution step.** When all three are
+absent, `source_count` derives to `len(sources)`, `pinned_count` derives to the count of
+`pinned: true` entries, and `fully_pinned` derives to whether that count equals `source_count` —
+each well-defined by Finding 40, and each already the fallback this document establishes for the
+validation-time checks. Resolution should not re-open a question validation has already answered by
+falling back to declared-only reads.
+
+**Amendment — add to rev 2 l.190–193:**
+
+> When `source_count`, `pinned_count`, and `fully_pinned` are all absent from the evidence set,
+> `resolveEvidenceSet` derives them from `sources` using the same fallbacks as Findings 41 and 43:
+> `source_count = len(sources)`, `pinned_count` = the count of entries with `pinned: true`, and
+> `fully_pinned` = (`pinned_count == source_count`). Resolution proceeds on these derived values;
+> it MUST NOT halt for want of declared count members that validation has already shown are
+> derivable.
+
+**Vector:** `evi-resolve-all-counts-absent-accepted`, `RESOLUTION`. Two pinned entries,
+`source_count`, `pinned_count`, and `fully_pinned` all omitted, verifier holds bytes for both URLs
+and content matches. Derived values are `source_count=2`, `pinned_count=2`, `fully_pinned=true`; the
+step resolves on them (root checked against `computed.evidence_root`, recomputed independently)
+rather than halting for want of the declared members.
+
+## Finding 45 — step (d)'s per-item reasons range over every entry, including the trivial unpinned case (was step (d))
+
+Rev 4 l.184–191 (Finding 17) states that step (d) reports a per-item reason and names no pinned
+restriction — `item_reasons` is per-entry, not per-pinned-entry. An unpinned entry trivially
+qualifies for `content_not_held` — by definition it was never retained, so the verifier never holds
+candidate bytes for it — and the open question was whether that trivial case still needs to appear
+in `item_reasons`, or whether it may be omitted because the entry was already unpinned and so
+"obviously" `content_not_held`.
+
+**It must appear, and omitting it is exactly the class this revision keeps closing.** F17 is stated
+per-item and unconditioned on `pinned`; an implementation that omits unpinned entries from
+`item_reasons` because their reason is "trivial" is applying an unstated pinned-only restriction to
+a set-level output, the same shape as Findings 35–37 and 41–44. This finding does not, and cannot,
+change the resolution token itself: a set carrying any unpinned entry already resolves `unknown`
+before step (d) runs (rev 5 Finding 17's UNKNOWN pair), so the token is settled upstream of this
+finding either way.
+
+**Amendment — add to rev 4's Finding 17 text (base l.184–191):**
+
+> Step (d) reports a per-item reason for every entry in `sources`, pinned and unpinned alike. An
+> unpinned entry's reason is `content_not_held`, true by construction since an unpinned entry was
+> never retained (rev 4 l.294–296); this is not exempted from `item_reasons` for being trivial or
+> for the entry being unpinned. Omitting an unpinned entry from `item_reasons` is malformed output
+> from a conforming verifier, distinct from the receipt's own gate decision.
+
+**Vector:** `evi-unpinned-item-reason-content-not-held`, `UNKNOWN`. A single unpinned entry with no
+candidate bytes held; expects `content_not_held` reported in `item_reasons` for that entry itself,
+not omitted on the basis that the entry is unpinned.
+
+## Finding 46 — step (a) MUST halt on a pinned entry with an absent or null `snippet_sha256`, not surface as an uncaught exception
+
+base l.99–100 already requires `snippet_sha256` on a pinned entry. Michael's report: neither check
+in `validateEvidenceSet`'s pinned branch (checks 9–10, l.418–424, the whole of that branch) tests
+`snippet_sha256` at all, so a pinned entry with the member null or absent passes step (a) and
+reaches `resolveEvidenceSet`/`computeRoot`, where `leafHash` throws an uncaught exception. Reproduced
+live against `tools/evidence-root.ts`: the thrown message is "an unpinned entry has no leaf," which
+misattributes the fault — the entry that failed is pinned, and the actual defect is a null leaf
+input, not an unpinned entry reaching leaf construction at all.
+
+**This is a gap in the halt surface, not a new normative requirement** — the member was already
+required. What is new is that step (a) MUST test for it, so the failure is a reported halt with a
+condition identifier rather than an uncaught exception discovered downstream, three function calls
+after the point where the input was already known to be malformed.
+
+**Amendment — add to base §4.2 (a) (step (a), the pinned-branch checks):**
+
+> Step (a) MUST reject a pinned entry (`pinned: true`) whose `snippet_sha256` is absent or `null`,
+> before any resolution or root computation is attempted. Gate decision = halt; reported condition
+> `snippet_sha256_absent_when_pinned`. This is a validation-time halt, not a runtime exception: an
+> implementation MUST NOT allow a malformed input of this shape to reach leaf or root construction
+> and rely on a downstream error to surface it.
+
+**Vector:** `evi-snippet-sha256-absent-when-pinned-rejects`, `MALFORMED`, `snippet_sha256_absent_when_pinned`.
+A pinned entry with `snippet_sha256: null`. Expects a halt at step (a); explicitly must not reach
+`leafHash`/`computeRoot` and must not surface as an uncaught exception.
+
 ---
 
 ## Vectors for the rules this revision scopes
 
-Four vectors, and the point of each is that **the rev 7 set of 32 cannot fail on it.** Two
-implementations that disagree about Findings 35 and 36 both pass rev 7; exactly one of them passes
-rev 8.
+The original four rev-8 vectors (Findings 35–37) and the eight added in this closing pass (Findings
+40, 42, 43, 44, 45, 46 above — Findings 41 and 43's derivation shape share one condition-free
+`ADDITIVE`/`RESOLUTION` pattern rather than each minting a new condition identifier) total twelve new
+vectors over the rev 7 set. **The point of each is the same: the rev 7 set of 32 cannot fail on it,**
+and for Findings 35–37 specifically, `assert_scope_discriminating` proves it by evaluating the
+vector's own input under both competing readings and failing if they agree.
 
-The build proves that rather than asserting it. `assert_scope_discriminating` in the generator, and
-the matching block in the cross-check, evaluate each new vector's own input under **both** the
-whole-of-`sources` reading and the pinned-only reading and fail if the two agree. Run against a
-generator holding the pinned-only reading, the build fails with five messages; against the shipped
-set it passes. A vector that cannot fail on the defect it was added for is not evidence.
+### Findings 35–37 (carried from the held draft, unchanged)
 
-### `evi-duplicate-unpinned-entries-rejects` — `MALFORMED`, `duplicate_bound_tuple`
+- `evi-duplicate-unpinned-entries-rejects` — `MALFORMED`, `duplicate_bound_tuple`
+- `evi-unpinned-retrieved-at-noncanonical-rejects` — `MALFORMED`, `retrieved_at_not_canonical_form`
+- `evi-set-retrieved-at-equals-unpinned-value` — `SET SCOPE`, accepted, root-bearing
+- `evi-set-retrieved-at-above-unpinned-value-rejects` — `MALFORMED`, `set_retrieved_at_not_bytewise_least`
 
-Two unpinned entries with the same `url` and the same `retrieved_at`, differing only in
-`unpinned_reason` (`no_content_returned` and `provider_metadata_only`, both in the §4.1.1 domain).
-`pinned_count` is zero, `evidence_root` is `null`, and the set-level `retrieved_at` is correct, so
-the only condition injected is entry identity. Under the pinned-only reading the pair is invisible
-and the set is accepted.
+### Findings 40–46 (this closing pass)
 
-### `evi-unpinned-retrieved-at-noncanonical-rejects` — `MALFORMED`, `retrieved_at_not_canonical_form`
+- `evi-pinned-absent-rejects` — `MALFORMED`, `pinned_absent_or_not_boolean` (Finding 40)
+- `evi-pinned-not-boolean-rejects` — `MALFORMED`, `pinned_absent_or_not_boolean` (Finding 40)
+- `evi-fully-pinned-fallback-derives-from-sources-accepted` — `ADDITIVE`, accepted (Finding 41)
+- `evi-full-resource-digest-on-unpinned-rejects` — `MALFORMED`, `snippet_digest_present_for_full_resource` (Finding 42)
+- `evi-root-present-pinned-count-absent-accepted` — `ADDITIVE`, accepted, root-bearing (Finding 43)
+- `evi-resolve-all-counts-absent-accepted` — `RESOLUTION`, accepted, root-bearing (Finding 44)
+- `evi-unpinned-item-reason-content-not-held` — `UNKNOWN` (Finding 45)
+- `evi-snippet-sha256-absent-when-pinned-rejects` — `MALFORMED`, `snippet_sha256_absent_when_pinned` (Finding 46)
 
-One pinned entry with a canonical `retrieved_at`, and one unpinned entry carrying
-`2026-09-01T12:00:00Z` — the same instant as the pinned entry's value, zero fractional digits, the
-spelling rev 7's Finding 33c already identified as the one a reader assumes is canonical.
-`pinned_count` is 1, so the halt cannot be attributed to a zero-pinned set. The set-level
-`retrieved_at` is the pinned entry's value, which is also the bytewise-least value in the set —
-`.` sorts before `Z` — so Finding 36 is not co-injected.
+**Finding 34 compliance.** None of the new `expect` strings name the resolution being tested as
+though it were the input; each names the input configuration (which member is absent, which entry
+class carries the condition) and cites the governing finding for the rule, not the ruling itself.
 
-### `evi-set-retrieved-at-equals-unpinned-value` — `SET SCOPE`, accepted
-
-One pinned entry at `2026-09-01T12:00:00.000Z` and one unpinned entry at
-`2026-08-31T12:00:00.000Z`; the set-level `retrieved_at` equals the latter. **Accepted**, and the
-vector is root-bearing: the root over the pinned subset is a real normative value, and it is a
-value an implementation with the wrong set-level domain still computes correctly — which is why
-this vector turns on the set-level member and not on the root. Under the pinned-only reading the
-set-level value is not the minimum and the receipt is rejected, so a correct implementation and an
-incorrect one differ on an **accept**, not only on a halt.
-
-### `evi-set-retrieved-at-above-unpinned-value-rejects` — `MALFORMED`, `set_retrieved_at_not_bytewise_least`
-
-The same two entries, with the set-level `retrieved_at` set to the pinned entry's value instead.
-Rejected under Finding 36 and accepted under the pinned-only reading. The pair is deliberate: one
-limb fails an implementation that narrows the domain, the other fails one that widens it, and no
-implementation passes both by mixing domains.
-
-**Finding 34 compliance.** Neither set-level identifier names a resolution; both name the input
-configuration (where the value sits, and how the set-level member compares to it), which is what a
-reader needs to locate the vector. The two `expect` strings cite the governing rule and do not
-restate it. The tension with Finding 33 is real and is resolved the same way rev 7 resolved it for
-the existing thirteen: a `MALFORMED` vector must name its condition, and the condition identifier
-necessarily encodes the rule it fires on — what Finding 34 forbids is naming which branch of an
-**open** choice is normative. These choices are closed by this revision.
+**Cross-language agreement, executed for real this pass — not asserted.**
+`fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs --check
+fixtures/evidence-pinning-fixtures-v2-rev8.json` was run against the regenerated 44-vector set:
+`total_roots_checked: 26` (24 raw children, 1 hex-child counter-construction, 1 leaf raw-digest
+counter-construction), `vectors_in_file: 44`, `mismatches: 0`, `all_agree: true`. Two of the new
+vectors' `computed` root keys (`evi-root-present-pinned-count-absent-accepted`,
+`evi-resolve-all-counts-absent-accepted`) were matched to the cross-check's existing dispatch rules
+for `correct_root` and `evidence_root` respectively — no new dispatch branch was needed, and no new
+branch was added. **The fixture bundle's own digests are pinned in
+`fixtures/evidence-pinning-fixture-README-rev8.md`, not repeated here** — this document's digest is
+the input to that pin, not the other way around, and quoting the fixture set's hash here would make
+this document's own hash depend on a value that in turn depends on this document's hash.
 
 ---
 
 ## Set size after this revision
 
-| | rev 7 | rev 8 |
-|---|---|---|
-| Total vectors | 32 | **36** |
-| Root-bearing vectors | 13 | **14** |
-| Root values carried | 23 | **24** |
-| `MALFORMED` | 13 | **16** |
-| Remaining (`ADDITIVE`, `COMPLETENESS`, `UNKNOWN`, `EMPTY`) | 7 | 7 |
-| Overlap (`MALFORMED` **and** root-bearing) | 1 | 1 |
-| Distinct conditions named | 13 | 13 |
+| | rev 7 | rev 8 (held, 2026-09-11) | rev 8 (final, 2026-09-17) |
+|---|---|---|---|
+| Total vectors | 32 | 36 | **44** |
+| Root-bearing vectors | 13 | 14 | **16** |
+| Root values carried | 23 | 24 | **26** |
+| `MALFORMED` | 13 | 16 | **20** |
+| Remaining (all other designations) | 7 | 7 | **9** |
+| Overlap (`MALFORMED` **and** root-bearing) | 1 | 1 | **1** |
+| Distinct conditions named | 13 | 13 | **15** |
 
-14 + 16 + 7 − 1 = 36. The overlap is still `evi-root-mismatch-rejects` alone. Distinct conditions
-are unchanged at thirteen because three of the four new vectors reuse a condition (Finding 39);
-`SET SCOPE` is a new designation, and its one vector is root-bearing, so `Remaining` does not move.
+16 + 20 + 9 − 1 = 44. The overlap is still `evi-root-mismatch-rejects` alone. Two condition
+identifiers are new in this closing pass — `pinned_absent_or_not_boolean` (Finding 40) and
+`snippet_sha256_absent_when_pinned` (Finding 46); Finding 42's `snippet_digest_present_for_full_resource`
+reuses an identifier already named by the existing pinned vector, per Finding 39.
 
 **No count in this table is written by hand anywhere in the package.** Every group count, the
 vector total, and the entry census are derived by equality from the emitted set at build time
@@ -336,55 +574,69 @@ them from the shipped file and fails on any disagreement. Rev 6's E-1 and rev 7'
 hand-written counts that disagreed with their own artifact; E-5 above is a third. This closes the
 class rather than correcting a third instance of it.
 
-**Entry census, derived the same way and stated because it is the evidence for "the rev 7 set could
-not fail":** 67 entry objects, 54 pinned, 13 unpinned, across 12 vectors carrying at least one
-unpinned entry. The same walker over the rev 7 file gives 59 / 51 / 8 / 8, which reproduces
-Michael's independently reported rev 7 census exactly. The four new vectors add the 5 unpinned and
-3 pinned entries that account for the difference.
+**Entry census, derived the same way:**
+
+| | rev 7 | rev 8 (held) | rev 8 (final) |
+|---|---|---|---|
+| Entry objects | 59 | 67 | **79** |
+| Pinned entries | 51 | 54 | **62** |
+| Unpinned entries | 8 | 13 | **17** |
+| Vectors carrying ≥1 unpinned entry | 8 | 12 | **16** |
+
+The rev 7 figures reproduce Michael Msebenzi's independently reported rev 7 census exactly
+(59 / 51 / 8 / 8). The twelve vectors added since rev 7 account for the full deltas.
 
 ---
 
-## Findings ledger — 35–39
+## Findings ledger — 35–46
 
 | # | Finding | Source | Disposition |
 |---|---|---|---|
 | E-5 | Rev 7 l.111 says "twelve identifiers" over a table of thirteen | this side, rev 6 E-1's class | **Corrected** — l.111 reads thirteen; rev 8's counts are derived, not written. |
 | E-6 | Rev 6 l.229/240 attribute Finding 12 to rev 5; it is rev 2 l.91–97 | this side | **Corrected** — attribution moved to rev 2. |
 | E-7 | The rev 7 README quotes a fixture digest that does not match the file, runs the rev 6 files, and states rev 6's expected figures | this side, rev 6 E-2's class | **Corrected in the rev 8 README** — Reproduce block executed from a clean checkout before its digest was written. Rev 7 not edited. |
+| — | Check 4 (`pinned_count` exceeds `source_count`) is unreachable given checks 2/3, deleted from the reviewed implementation | `headlessoracle` | **Noted, not a spec amendment** — dead code in the reviewed implementation, not a rule this specification ever stated independently of checks 2/3. |
 | 35 | The entry-identity rule is stated in the leaf preimage's terms, so unpinned entries read as out of scope | `headlessoracle` | **Normative amendment** — §4.3 (a) restated over all of `sources`; 24c's cross-reference corrected. |
 | 36 | The set-level `retrieved_at` comparison borrows §4.1.2's pinned-only "canonical order" | `headlessoracle` | **Normative amendment** — bytewise-least over all entries; rev 2 l.95's domain restored. |
 | 37 | The `retrieved_at` form rule does not say which entries it ranges over | `headlessoracle` | **Normative amendment** — every entry, before any branch on `pinned`; set-level form is transitive. |
 | 38 | `pinned_set_empty` and `set_retrieved_at_not_first_in_canonical_order` name subsets their triggers do not use | `headlessoracle` (first), consequential (second) | **Normative amendment** — both renamed, superseded identifiers published, build fails on stale use. |
 | 39 | Rev 7's build asserted one condition per vector was one vector per condition | this side, found while building rev 8 | **Assertion withdrawn** — conditions may repeat across vectors; superseded-identifier check replaces uniqueness. |
-| — | Four vectors for 35, 36, and 37 | this side, for `headlessoracle`'s findings | **New vectors** — each proved discriminating at build time. |
+| 40 | `pinned` may be absent or non-boolean; nothing closes it to two values before rules branch on it | `headlessoracle` | **Normative amendment** — `pinned` REQUIRED, MUST be boolean; halt otherwise. Premise for every "pinned and unpinned alike" rule in this document. |
+| 41 | `fully_pinned`'s consistency check (was check 5) has no fallback when `source_count`/`pinned_count` are absent | `headlessoracle` | **Normative amendment** — falls back to `len(sources)` and the `pinned: true` count. |
+| 42 | The full-resource/`resource_sha256` rule (was check 10) sits after the unpinned-branch `continue` in the reviewed implementation | `headlessoracle` | **Normative amendment (clarifying placement)** — rule ranges over every entry regardless of `pinned`; no pinned-only restriction was ever stated. |
+| 43 | The root-presence checks (was checks 12/13) have no fallback when `pinned_count` is absent | `headlessoracle` | **Normative amendment** — same fallback as Finding 41, applied to root-presence. |
+| 44 | `resolveEvidenceSet`'s carried triple has no fallback when all three members are absent | `headlessoracle` | **Normative amendment** — derives all three from `sources`; resolution does not re-open what validation already answers. |
+| 45 | Step (d)'s per-item reasons (was step (d)) — is the trivial unpinned `content_not_held` case exempt from `item_reasons`? | `headlessoracle` | **Normative amendment** — not exempt; every entry, including the trivial unpinned case, gets a reported reason. |
+| 46 | A pinned entry with absent/null `snippet_sha256` passes step (a) and later throws an uncaught exception in `leafHash`, misattributed to the wrong branch | `headlessoracle` | **Normative amendment (closes a halt-surface gap)** — step (a) MUST halt on this shape; new condition `snippet_sha256_absent_when_pinned`. |
+| — | Twelve vectors for Findings 35–37 and 40–46 | this side, for `headlessoracle`'s findings | **New vectors** — Findings 35–37 proved discriminating at build time; Findings 40–46 cross-checked in Node against the regenerated 44-vector set, 0 mismatches. |
 
-**Attribution.** Findings 35, 36, 37, and the `pinned_set_empty` half of Finding 38 are Michael
-Msebenzi's, reported against rev 7 on 2026-09-11 with the implementation lines that show his
-reading. The diagnosis that all of them are one drafting habit — set-level rules written in
-§4.1.2's pinned-only vocabulary — the second rename, Findings 39, E-5, E-6, and the four vectors
-are this side's. Pablo Play's opposing reading of Finding 35 is what establishes that the rev 7
-text is genuinely ambiguous rather than merely misread; **neither reading was a defect in either
-implementation.**
+**Attribution.** Every numbered finding in this ledger (35–46) is Michael Msebenzi's, reported
+against `tools/evidence-root.ts` across two messages on 2026-09-11 and 2026-09-17, with the
+implementation lines that show his reading in each case. The diagnosis that Findings 35–37 are one
+drafting habit, the second condition rename, Finding 39, E-5, E-6, E-7, the "check 4 is dead code,
+not a scope decision" note, and the twelve vectors are this side's. Pablo Play's opposing reading of
+Finding 35 is what establishes that the rev 7 text was genuinely ambiguous rather than merely
+misread; **neither reading was a defect in either implementation.**
 
 ---
 
 ## What remains open
 
-1. **Five more all-versus-pinned scope choices.** Michael reported seven; this revision rules the
-   three he named (Findings 35, 36, and the first half of 38) and holds the rest. **Rev 8 is not
-   final until the five land and are ruled here.** Reserved as Findings 40–44 and deliberately left
-   unnumbered against specific rules until his list arrives, so the numbering survives whatever
-   the five turn out to be. The presumption from three instances is that the same repair applies —
-   state the rule over `sources` in its own terms — but a presumption is not a ruling, and each
-   needs its own text, its own condition identifier, and its own discriminating vector.
-2. **The condition-enumeration diff** (rev 7 open item 1). Still open, unaffected by Finding 39:
-   diff the thirteen named conditions against the malformed-condition enumeration in the
-   specification text, whose count Michael puts at fifteen, and name the conditions with no vector.
-3. **A cold build** (rev 7 open item 2). Unchanged and load-bearing. Michael's rev 7 run extended
-   his earlier implementation; Pablo Play's from-text reconstruction is the filing gate for -02.
-   **Until it lands, no revision of this section has had an independent implementation in the sense
-   the README defines.**
-4. **Michael's counterfactual variant builds.** He reported four builds producing byte-identical
-   output at sha256 `d461aaf4…`; that digest is verified against
-   `walker/evidence-roots-ours-rev7.json` at his tip `4689b38`, but the variant runs themselves are
-   not committed there. Nothing in this revision depends on them.
+1. **A cold build.** Unchanged and load-bearing. Michael's runs across rev 5 through this pass all
+   extend his earlier implementation; Pablo Play's from-text reconstruction is **the filing gate for
+   -02**. **Until it lands, no revision of this section has had an independent implementation in the
+   sense the README defines.**
+2. **The condition-enumeration diff** (rev 7 open item 1, carried unchanged). Fifteen conditions are
+   now named by vectors (up from thirteen), which happens to match the fifteen Michael previously put
+   the specification text's malformed-condition enumeration at — but that match is not verified here
+   against his actual list, and this document does not claim the diff is closed on that basis. Still
+   open until the two lists are actually compared name-for-name.
+3. **The pinned+unpinned duplicate-identity pair** (noted under Finding 35). A pinned entry and an
+   unpinned entry sharing `url` and `retrieved_at` is one retrieval recorded twice under the amended
+   §4.3 (a), and no vector in this revision covers that pair. Candidate for a future revision.
+4. **Michael's counterfactual variant builds** — resolved this pass, no longer open. Confirmed
+   committed at `77381b9` and independently re-verified (clean install, all three builds and probes
+   run, 3/3 hold, negative control fails correctly). Recorded above under "What is now confirmed."
+
+Item 1 in the held draft's original list — "five more all-versus-pinned scope choices" — is
+**resolved by this revision** (Findings 40–46) and is not carried forward.

@@ -373,6 +373,54 @@ def make_vectors():
                     input=dict(entry=dict(url=URL_A, snippet_sha256=D_alpha, content_kind="full_resource",
                                           retrieved_at=TS_1, pinned=True, resource_sha256=D_alpha)),
                     expect="halt, malformed"))
+    # rev 8 Finding 42 (was check 10, the "plain kind" of the five outstanding
+    # scope choices): rev 4 l.249-254 (F19) names no pinned condition, so the
+    # rule ranges over every entry in `sources`. The vector rev 7 lacked: an
+    # UNPINNED entry that nonetheless carries content_kind full_resource
+    # together with a non-null resource_sha256. It shares the condition
+    # identifier with the pinned vector above -- this is the same MUST applied
+    # to the entry the pinned-only placement of the check was skipping, not a
+    # new rule.
+    out.append(dict(id="evi-full-resource-digest-on-unpinned-rejects", designation="MALFORMED", condition="snippet_digest_present_for_full_resource",
+                    input=dict(entry=dict(url=URL_A, retrieved_at=TS_1, pinned=False,
+                                          unpinned_reason="no_content_returned",
+                                          content_kind="full_resource", resource_sha256=D_alpha)),
+                    expect="halt, malformed; the two-state MUST (Finding 40) makes this entry's "
+                           "pinned value determinate, so F19 sees it despite pinned being false"))
+    # rev 8 Finding 40: THE THREE-VALUED MUST. `pinned` is REQUIRED on every
+    # `sources` entry and MUST be exactly `true` or `false`. This closes a third,
+    # unspecified state that rev 4 through rev 7 never addressed: a conforming
+    # implementation branching on `pinned === true` and `pinned === false` (base
+    # l.256/344/533 and l.393 in Michael Msebenzi's read of tools/evidence-root.ts)
+    # treats an entry with no `pinned` member as neither, and it falls through
+    # into the pinned-only checks despite declaring no pinned status at all. The
+    # five findings below, and Findings 35-37 already ruled, are sound as "every
+    # entry, pinned and unpinned alike" ONLY because this MUST first forecloses
+    # the absent case: without it, "pinned and unpinned alike" silently presumes
+    # a binary the corpus never actually stated.
+    out.append(dict(id="evi-pinned-absent-rejects", designation="MALFORMED", condition="pinned_absent_or_not_boolean",
+                    input=dict(entry=dict(url=URL_A, snippet_sha256=D_alpha, content_kind=CK, retrieved_at=TS_1)),
+                    expect="halt, malformed; `pinned` is absent, which is neither `true` nor "
+                           "`false` and is no longer a permitted third case"))
+    out.append(dict(id="evi-pinned-not-boolean-rejects", designation="MALFORMED", condition="pinned_absent_or_not_boolean",
+                    input=dict(entry=dict(url=URL_A, snippet_sha256=D_alpha, content_kind=CK,
+                                          retrieved_at=TS_1, pinned="true")),
+                    expect="halt, malformed; `pinned` is present but not a JSON boolean"))
+    # rev 8: THE NULL-SNIPPET HALT CONDITION. A pinned entry with `snippet_sha256`
+    # null or absent previously passed validateEvidenceSet's step (a) -- checks 9
+    # and 10 are the whole of the pinned branch and neither one tests
+    # snippet_sha256 -- and then crashed resolveEvidenceSet/computeRoot with an
+    # uncaught exception instead of resolving to a halt with a reported
+    # condition (reproduced live against tools/evidence-root.ts: leafHash throws
+    # "an unpinned entry has no leaf" on a PINNED entry, because the throw guards
+    # the wrong member). base l.99-100 already requires the member on a pinned
+    # entry; this finding is that step (a) MUST enforce it as a halt, not leave
+    # the gap to be discovered by an exception three functions later.
+    out.append(dict(id="evi-snippet-sha256-absent-when-pinned-rejects", designation="MALFORMED", condition="snippet_sha256_absent_when_pinned",
+                    input=dict(entry=dict(url=URL_A, snippet_sha256=None, content_kind=CK,
+                                          retrieved_at=TS_1, pinned=True)),
+                    expect="halt, malformed at step (a); MUST NOT reach leafHash/computeRoot "
+                           "and MUST NOT surface as an uncaught exception"))
     # rev 8 Finding 38 rename: pinned_set_empty -> evidence_set_names_no_sources.
     # The trigger is an empty `sources` array or `source_count` of zero (rev 4
     # l.273-276), not an empty pinned subset, which is legal (base l.139-140).
@@ -429,6 +477,63 @@ def make_vectors():
                     input=dict(evidence_set=dict(pinned_count=1, evidence_root=None,
                                                  sources=[Entry(URL_A, D_alpha, CK, TS_1).__dict__])),
                     expect="halt, malformed"))
+    # rev 8 Finding 41 (was check 5, one of the three "derivation-shape" scope
+    # choices): rev 2 l.180-181 / base l.74 state fully_pinned's consistency over
+    # the two DECLARED members and say nothing about an absent one. Now that
+    # Finding 40 makes every entry's `pinned` exactly one of two values, an
+    # absent `source_count` falls back to `sources.length` and an absent
+    # `pinned_count` falls back to the count of entries with `pinned: true` --
+    # both well-defined over the whole set, with no third bucket left over.
+    # ACCEPT: neither count is declared; the derived values (3, 2) make
+    # fully_pinned=False correct, and the set is not malformed for that reason.
+    _e_f41 = [Entry(URL_A, D_alpha, CK, TS_1).__dict__,
+              Entry(URL_B, D_beta,  CK, TS_1).__dict__,
+              dict(url="https://example.org/c", retrieved_at=TS_1, pinned=False,
+                   unpinned_reason="no_content_returned")]
+    out.append(dict(id="evi-fully-pinned-fallback-derives-from-sources-accepted", designation="ADDITIVE",
+                    input=dict(evidence_set=dict(fully_pinned=False, sources=_e_f41),
+                               note="source_count and pinned_count both OMITTED"),
+                    expect="accepted; NOT malformed. fully_pinned=False is consistent with the "
+                           "derived source_count=3 (len(sources)) and derived pinned_count=2 "
+                           "(entries with pinned: true), which is well-defined only because "
+                           "Finding 40 forecloses a pinned-absent third bucket"))
+    # rev 8 Finding 43 (was checks 12/13, the other "derivation-shape" choice):
+    # base l.139-140 and rev 2 l.186-188 state the zero-pinned / nonzero-pinned
+    # root rules on the DECLARED pinned_count and are silent on an absent one.
+    # The operand, when pinned_count is absent, is the count of entries with
+    # `pinned: true` -- the same fallback as Finding 41, now applied to the
+    # root-presence checks. ACCEPT: pinned_count omitted, one pinned entry
+    # present, root present and correct -- not a zero-pinned violation.
+    _e_f43 = [Entry(URL_A, D_alpha, CK, TS_1).__dict__,
+              dict(url=URL_B, retrieved_at=TS_1, pinned=False,
+                   unpinned_reason="no_content_returned")]
+    _f43_root = evidence_root([Entry(URL_A, D_alpha, CK, TS_1)])
+    out.append(dict(id="evi-root-present-pinned-count-absent-accepted", designation="ADDITIVE",
+                    input=dict(evidence_set=dict(evidence_root=_f43_root, sources=_e_f43),
+                               note="pinned_count OMITTED; one entry pinned, one not"),
+                    expect="accepted; NOT malformed. pinned_count derives to 1 (entries with "
+                           "pinned: true), which is nonzero, so a non-null root is not a "
+                           "root_present_with_zero_pinned violation",
+                    computed=dict(correct_root=_f43_root)))
+    # rev 8 Finding 44 (resolveEvidenceSet's triple fallback -- the same
+    # derivation shape as Findings 41/43, now at the resolution step rather than
+    # validation): rev 2 l.190-193 speaks of a carried fully_pinned and states no
+    # derivation for an absent one. When source_count, pinned_count AND
+    # fully_pinned are all absent, all three derive from the entries themselves
+    # (2, 2, true, respectively, for the two pinned entries below), and
+    # resolution proceeds on those derived values rather than halting for want
+    # of declared members.
+    _e_f44 = [Entry(URL_A, D_alpha, CK, TS_1), Entry(URL_B, D_beta, CK, TS_1)]
+    out.append(dict(id="evi-resolve-all-counts-absent-accepted", designation="RESOLUTION",
+                    input=dict(evidence_set=dict(sources=[e.__dict__ for e in _e_f44]),
+                               note="source_count, pinned_count AND fully_pinned all OMITTED",
+                               verifier_holds_bytes_for=[URL_A, URL_B],
+                               content_matches=True),
+                    expect="step resolves on the derived values (source_count=2, "
+                           "pinned_count=2, fully_pinned=true); MUST NOT halt for want of "
+                           "declared count members",
+                    computed=dict(evidence_root=evidence_root(_e_f44))))
+
     # Malformed: root not recomputable from sources
     _e = [Entry(URL_A, D_alpha, CK, TS_1)]
     # rev 6 E-3, airlock structural fix: correct_root moves from input to
@@ -485,6 +590,22 @@ def make_vectors():
                     input=dict(entry=Entry(URL_A, D_alpha, CK, TS_1).__dict__,
                                verifier_holds_bytes_for=None),
                     expect="unknown; per-item reason content_not_held (MUST per rev 5 Finding 17)"))
+    # rev 8 Finding 45 (was step (d), the other "plain kind" scope choice): rev 4
+    # l.184-191 (F17) says per-item and names no pinned restriction, so
+    # item_reasons ranges over every entry in `sources`, not only the pinned
+    # subset. An unpinned entry trivially reports content_not_held -- by
+    # definition it was never retained, so the verifier never holds candidate
+    # bytes for it -- and this finding is that the account MUST say so rather
+    # than omit the entry from item_reasons entirely. This does not, and cannot,
+    # flip the resolution token: a set carrying any unpinned entry already
+    # resolves unknown before step (d) runs.
+    out.append(dict(id="evi-unpinned-item-reason-content-not-held", designation="UNKNOWN",
+                    input=dict(entry=dict(url=URL_A, retrieved_at=TS_1, pinned=False,
+                                          unpinned_reason="no_content_returned"),
+                               verifier_holds_bytes_for=None),
+                    expect="unknown; per-item reason content_not_held on the UNPINNED entry "
+                           "itself (Finding 45), trivially true by construction and MUST be "
+                           "present in item_reasons rather than omitted for being unpinned"))
 
     # ==================== rev 7 additions ====================
     # Three rules rev 6 states that the rev 6 set does not exercise. Each was
@@ -796,7 +917,7 @@ def emit():
             rev5_sha256="1f901fd7d56fcfe9f858446e5b685b540b5904d6abcfb4b2509e1eb675aa1e51",
             rev6_sha256="d62ded37dcf63f541e5b670b0cc0f7876e04a182064eb06a32af0037effaf026",
             rev7_sha256="6b13f6fc35d745c2642edcb52a2754f7cd43340ded3248b5d1ba70a431d6c037",
-            rev8_sha256="a92c17e8240d8aaccd3ac1d74119a8ddb3095624eb677c914ee208168f5e961a",
+            rev8_sha256="c42928e6b08f30828d7664f1abcb737431a13cbd19650b64e85b2365cc04636c",
             rev8_base_commit="3d0ec0e82229c1336340f0323d54904e5baf38b2",
             review_draft_and_rev3_head="49b7d039576b17e39dd707c9f223de5670c9be86",
             fixture_set_committed_at="45d959d01ba011e71fa6a1de515d4b75b3a7eaa6",

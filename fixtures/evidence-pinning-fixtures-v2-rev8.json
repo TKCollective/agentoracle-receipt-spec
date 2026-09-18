@@ -1,12 +1,13 @@
 {
   "header": {
     "census": {
-      "arithmetic": "14 + 16 + 7 − 1 = 36",
+      "arithmetic": "16 + 20 + 9 − 1 = 44",
       "arithmetic_holds": true,
       "conditions_named": [
         "content_kind_absent_when_pinned",
         "duplicate_bound_tuple",
         "evidence_set_names_no_sources",
+        "pinned_absent_or_not_boolean",
         "pinned_count_disagrees_with_pinned_entries",
         "retrieved_at_not_canonical_form",
         "root_not_recomputable_from_sources",
@@ -14,20 +15,21 @@
         "root_present_with_zero_pinned",
         "set_retrieved_at_not_bytewise_least",
         "snippet_digest_present_for_full_resource",
+        "snippet_sha256_absent_when_pinned",
         "source_count_disagrees_with_sources",
         "unpinned_reason_outside_domain",
         "unpinned_without_reason"
       ],
-      "entries_pinned": 54,
-      "entries_unpinned": 13,
-      "entry_objects": 67,
-      "malformed": 16,
+      "entries_pinned": 62,
+      "entries_unpinned": 17,
+      "entry_objects": 79,
+      "malformed": 20,
       "overlap": 1,
-      "remaining": 7,
-      "root_bearing": 14,
-      "root_values": 24,
-      "total": 36,
-      "vectors_carrying_unpinned_entries": 12
+      "remaining": 9,
+      "root_bearing": 16,
+      "root_values": 26,
+      "total": 44,
+      "vectors_carrying_unpinned_entries": 16
     },
     "census_note": "header.census is DERIVED from the emitted vectors at build time (see census() in the generator). No count in it is written by hand.",
     "independence_disclosure": "This fixture set was produced by evidence-pinning-fixture-generator-rev8.py. The Node cross-check in evidence-pinning-fixture-crosscheck-rev8.mjs is authored by the same party. Agreement between the two is a cross-language check that catches language-specific defects (JSON ordering, UTF-8 handling, hash library differences). It is NOT an independent implementation. Independence for this section means a build from the specification text alone by a party with no access to these files.",
@@ -42,7 +44,7 @@
       "rev6_sha256": "d62ded37dcf63f541e5b670b0cc0f7876e04a182064eb06a32af0037effaf026",
       "rev7_sha256": "6b13f6fc35d745c2642edcb52a2754f7cd43340ded3248b5d1ba70a431d6c037",
       "rev8_base_commit": "3d0ec0e82229c1336340f0323d54904e5baf38b2",
-      "rev8_sha256": "a92c17e8240d8aaccd3ac1d74119a8ddb3095624eb677c914ee208168f5e961a",
+      "rev8_sha256": "c42928e6b08f30828d7664f1abcb737431a13cbd19650b64e85b2365cc04636c",
       "review_draft_and_rev3_head": "49b7d039576b17e39dd707c9f223de5670c9be86",
       "review_draft_sha256": "9832156998ceb35f25d08c5be2d4d7c314477b25045f4499e07f3c5e501f5096"
     },
@@ -52,7 +54,7 @@
     },
     "superseded_conditions_note": "rev 8 Finding 38. A run against rev 7 reported the left-hand identifier; rev 8 requires the right-hand one. The old values are published as superseded rather than dropped so two runs can be compared. A vector naming a superseded identifier fails the build.",
     "title": "evidence-pinning conformance fixtures (v2 preimage, four-term sort, rev 8 rules)",
-    "vector_count": 36
+    "vector_count": 44
   },
   "vectors": [
     {
@@ -486,6 +488,66 @@
       }
     },
     {
+      "condition": "snippet_digest_present_for_full_resource",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed; the two-state MUST (Finding 40) makes this entry's pinned value determinate, so F19 sees it despite pinned being false",
+      "id": "evi-full-resource-digest-on-unpinned-rejects",
+      "input": {
+        "entry": {
+          "content_kind": "full_resource",
+          "pinned": false,
+          "resource_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "unpinned_reason": "no_content_returned",
+          "url": "https://example.org/a"
+        }
+      }
+    },
+    {
+      "condition": "pinned_absent_or_not_boolean",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed; `pinned` is absent, which is neither `true` nor `false` and is no longer a permitted third case",
+      "id": "evi-pinned-absent-rejects",
+      "input": {
+        "entry": {
+          "content_kind": "snippet",
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+          "url": "https://example.org/a"
+        }
+      }
+    },
+    {
+      "condition": "pinned_absent_or_not_boolean",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed; `pinned` is present but not a JSON boolean",
+      "id": "evi-pinned-not-boolean-rejects",
+      "input": {
+        "entry": {
+          "content_kind": "snippet",
+          "pinned": "true",
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+          "url": "https://example.org/a"
+        }
+      }
+    },
+    {
+      "condition": "snippet_sha256_absent_when_pinned",
+      "designation": "MALFORMED",
+      "expect": "halt, malformed at step (a); MUST NOT reach leafHash/computeRoot and MUST NOT surface as an uncaught exception",
+      "id": "evi-snippet-sha256-absent-when-pinned-rejects",
+      "input": {
+        "entry": {
+          "content_kind": "snippet",
+          "pinned": true,
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "snippet_sha256": null,
+          "url": "https://example.org/a"
+        }
+      }
+    },
+    {
       "condition": "evidence_set_names_no_sources",
       "designation": "MALFORMED",
       "expect": "halt, malformed",
@@ -652,6 +714,102 @@
       }
     },
     {
+      "designation": "ADDITIVE",
+      "expect": "accepted; NOT malformed. fully_pinned=False is consistent with the derived source_count=3 (len(sources)) and derived pinned_count=2 (entries with pinned: true), which is well-defined only because Finding 40 forecloses a pinned-absent third bucket",
+      "id": "evi-fully-pinned-fallback-derives-from-sources-accepted",
+      "input": {
+        "evidence_set": {
+          "fully_pinned": false,
+          "sources": [
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+              "url": "https://example.org/a"
+            },
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753",
+              "url": "https://example.org/b"
+            },
+            {
+              "pinned": false,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "unpinned_reason": "no_content_returned",
+              "url": "https://example.org/c"
+            }
+          ]
+        },
+        "note": "source_count and pinned_count both OMITTED"
+      }
+    },
+    {
+      "computed": {
+        "correct_root": "35bc8fb1c853c3de6fa2a4fcacaa7223202fafa7bb5411595f167f21834160c3"
+      },
+      "designation": "ADDITIVE",
+      "expect": "accepted; NOT malformed. pinned_count derives to 1 (entries with pinned: true), which is nonzero, so a non-null root is not a root_present_with_zero_pinned violation",
+      "id": "evi-root-present-pinned-count-absent-accepted",
+      "input": {
+        "evidence_set": {
+          "evidence_root": "35bc8fb1c853c3de6fa2a4fcacaa7223202fafa7bb5411595f167f21834160c3",
+          "sources": [
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+              "url": "https://example.org/a"
+            },
+            {
+              "pinned": false,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "unpinned_reason": "no_content_returned",
+              "url": "https://example.org/b"
+            }
+          ]
+        },
+        "note": "pinned_count OMITTED; one entry pinned, one not"
+      }
+    },
+    {
+      "computed": {
+        "evidence_root": "7f6addf189cd884e3be1919e470daeba0628bd7f84afefe1492f3fdcd86e4960"
+      },
+      "designation": "RESOLUTION",
+      "expect": "step resolves on the derived values (source_count=2, pinned_count=2, fully_pinned=true); MUST NOT halt for want of declared count members",
+      "id": "evi-resolve-all-counts-absent-accepted",
+      "input": {
+        "content_matches": true,
+        "evidence_set": {
+          "sources": [
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+              "url": "https://example.org/a"
+            },
+            {
+              "content_kind": "snippet",
+              "pinned": true,
+              "retrieved_at": "2026-09-01T12:00:00.000Z",
+              "snippet_sha256": "f44e64e75f3948e9f73f8dfa94721c4ce8cbb4f265c4790c702b2d41cfbf2753",
+              "url": "https://example.org/b"
+            }
+          ]
+        },
+        "note": "source_count, pinned_count AND fully_pinned all OMITTED",
+        "verifier_holds_bytes_for": [
+          "https://example.org/a",
+          "https://example.org/b"
+        ]
+      }
+    },
+    {
       "computed": {
         "correct_root": "35bc8fb1c853c3de6fa2a4fcacaa7223202fafa7bb5411595f167f21834160c3"
       },
@@ -804,6 +962,20 @@
           "pinned": true,
           "retrieved_at": "2026-09-01T12:00:00.000Z",
           "snippet_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
+          "url": "https://example.org/a"
+        },
+        "verifier_holds_bytes_for": null
+      }
+    },
+    {
+      "designation": "UNKNOWN",
+      "expect": "unknown; per-item reason content_not_held on the UNPINNED entry itself (Finding 45), trivially true by construction and MUST be present in item_reasons rather than omitted for being unpinned",
+      "id": "evi-unpinned-item-reason-content-not-held",
+      "input": {
+        "entry": {
+          "pinned": false,
+          "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "unpinned_reason": "no_content_returned",
           "url": "https://example.org/a"
         },
         "verifier_holds_bytes_for": null
