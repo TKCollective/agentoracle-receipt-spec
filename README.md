@@ -232,6 +232,8 @@ Conformance is validated against a published fixture set, with byte-identical re
 
 A vector set covering the decision mapping — including a required-reject vector for a receipt that reports a pass while a member reads `not_checked` — is maintained alongside this spec at [`conformance/`](conformance/). Run it with `node conformance/check.mjs`.
 
+The `leaf-screen-halt` reject vector for `delegation-chain-ref-v1` (a payment-authority chain cannot anchor a PII-screen halt as its leaf) is mirrored byte-for-byte from [giskard09/argentum-core PR #27](https://github.com/giskard09/argentum-core/pull/27) at [`examples/conformance/delegation-chain-ref/leaf-screen-halt/`](examples/conformance/delegation-chain-ref/leaf-screen-halt/); the upstream commit, file hashes and Apache-2.0 notice are in [`examples/conformance/delegation-chain-ref/NOTICE.md`](examples/conformance/delegation-chain-ref/NOTICE.md). Run it with `python verify.py` from that directory; expected `1/1 passed`.
+
 ---
 
 ## Standards position
