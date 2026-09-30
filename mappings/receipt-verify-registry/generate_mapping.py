@@ -166,7 +166,7 @@ DOCS["EP"] = {
         ("EP-4.3-e-absent-unknown", "§4.3 (e) (review draft (d)): a receipt carrying no evidence_set resolves unknown for the step and MUST NOT fail it"),
         ("EP-4.3-f-declared-partial-not-invalid", "rev2 §5 step (f): a properly declared partial evidence set is not invalid and the receipt is not malformed; an implementation MUST NOT treat an unknown resolution under (c) as a malformed-receipt condition"),
         ("EP-4.3-g-distinct-category", "rev2 §5 step (g): a verifier MUST treat an unknown resolution under (c) as a distinct category and MUST NOT present it as a weaker form of a satisfied offline-recompute claim; a verifier that reports, displays, summarises or forwards an outcome MUST carry the distinction"),
-        ("EP-4.1.2-root-inside-signed-payload", "rev2 §4 (Finding 4, Q2): evidence_root MUST be inside the signed payload, without exception"),
+        ("EP-4.1.2-root-inside-signed-payload", "rev2 §5 (Finding 4, Q2): evidence_root MUST be inside the signed payload, without exception"),
         ("EP-4.3-resolved-token", "rev6 Finding 29: the affirmative step resolution is the token resolved; an implementation MUST emit resolved or unknown and no other value"),
         ("EP-4.3-diagnostic-naming", "rev6 Finding 31: when more than one condition is violated the implementation halts on the first in section order and names it; a vector injecting more than one condition MUST state which"),
         ("EP-4.3-empty-set", "rev4 Finding 20: an evidence_set whose sources names no entries is malformed (evidence_set_names_no_sources)"),
