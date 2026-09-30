@@ -1,0 +1,3390 @@
+{
+  "$schema": "./mapping.schema.json",
+  "mapping_kind": "vector-requirement-mapping",
+  "methodology": {
+    "name": "Agent Receipt Conformance — Grading Methodology",
+    "axis": "§2.7 Vector requirement mapping",
+    "version": "v0.4.5-draft (§2.7 unchanged from v0.4.1 per its editor)",
+    "url": "https://github.com/LembaGang/receipt-verify/blob/11d520880d7b3a2647b04d09d84d692c94cc4368/registry/methodology/v0.4.5-draft.md"
+  },
+  "corpus_snapshot": {
+    "repository": "TKCollective/tanilo-receipt-spec",
+    "commit": "cbba94b7576cf2aec08c70aeb2899fdfa4d35c66"
+  },
+  "prepared": {
+    "by": "Joe Krausz, TK Collective LLC",
+    "date": "2026-09-30",
+    "for": "Michael Msebenzi (headlessoracle), receipt-verify registry"
+  },
+  "coverage_rule": "Coverage is recorded per vector and requirement only where an assertion is actually executed. covered: executed by a checker published with the corpus against the shipped file. partial: declared in the manifest and executed only by the emitter that produced it or by an external run, or the checker exercises part of the requirement. not covered: no executed assertion. The reverse view takes the best coverage any vector gives a requirement.",
+  "not_counted": {
+    "v0.4-branch-vectors": "7 vectors on the unmerged v0.4 branch: not in the snapshot; deferred until merged",
+    "rev5-rev7-fixtures": "fixtures/evidence-pinning-fixtures-v2-rev5|6|7.json: superseded by rev8; not corpora",
+    "rev8-known-conflict": "4 rev8 positive fixtures omit snippet_sha256 on unpinned entries, which -03 §5.3.2 requires present; noted per vector; a repaired rev9 is not yet published"
+  },
+  "requirement_documents": {
+    "D01": {
+      "title": "draft-krausz-verification-state-01 (filed 2026-06-12)",
+      "url": "https://www.ietf.org/archive/id/draft-krausz-verification-state-01.txt",
+      "sha256": "22c5ce262bdf4e63ef538a308e7a8455e93c4143b9e1726b7b64720615d516db",
+      "pinned_by": "examples/v0.3-composed/vectors.json spec + README; examples/v0.4-composed/vectors.json spec + README (both name -01)",
+      "scope": "whole document; every normative statement in sections 3-7, 9 and 10",
+      "requirements": {
+        "D01-3.2-conjunction": "§3.2: multiple verification.* constraints combine with AND; all MUST resolve to act for the action to proceed",
+        "D01-3.2-env-ordering": "§3.2: environment.* constraints MUST short-circuit before verification.* constraints",
+        "D01-4.1-jws": "§4.1: receipts MUST be JWS; a relying party MUST accept compact and JSON (flattened) serializations",
+        "D01-4.1-alg": "§4.1: a conforming implementation MUST accept both EdDSA and ES256",
+        "D01-4.1-kid": "§4.1: kid MUST resolve to a key in the issuer's published JWKS",
+        "D01-4.1-typ": "§4.1: typ is verification-receipt+jws",
+        "D01-4.2-v_verdict": "§4.2: v_verdict REQUIRED, one of supported | refuted | unverifiable | unknown",
+        "D01-4.2-v_confidence": "§4.2: v_confidence REQUIRED, float in [0, 1]",
+        "D01-4.2-v_adversarial_result": "§4.2: v_adversarial_result REQUIRED, one of resilient | vulnerable | not_checked",
+        "D01-4.2-v_recommendation": "§4.2: v_recommendation REQUIRED, derived deterministically from the canonical input under the named mapping",
+        "D01-4.2-v_gate": "§4.2: v_gate REQUIRED, act | halt, derived from v_recommendation under the named mapping",
+        "D01-4.2-v_gate_mapping": "§4.2: v_gate_mapping REQUIRED; mapping documents are immutable after publication",
+        "D01-4.2-v_gate_mapping_hash": "§4.2: v_gate_mapping_hash REQUIRED; absence is a malformed-receipt condition and MUST halt",
+        "D01-4.2-jwt-claims": "§4.2: iss, iat, exp REQUIRED; sub RECOMMENDED; nbf OPTIONAL",
+        "D01-4.3-sequence": "§4.3: a relying party MUST execute the eight-step sequence and treat any failure as malformed with gate decision halt",
+        "D01-4.3-1-signature": "§4.3 step 1: verify the JWS signature against the issuer's published JWKS",
+        "D01-4.3-2-mapping-digest": "§4.3 step 2: fetch the named mapping document; its SHA-256 MUST match v_gate_mapping_hash; receipts without the hash are malformed",
+        "D01-4.3-3-recompute-recommendation": "§4.3 step 3: recompute candidate_recommendation from (v_verdict, v_confidence, v_adversarial_result) using the mapping's rules and threshold",
+        "D01-4.3-4-confirm-recommendation": "§4.3 step 4: confirm candidate_recommendation == v_recommendation",
+        "D01-4.3-5-compute-gate": "§4.3 step 5: compute candidate_gate = mapping(v_recommendation)",
+        "D01-4.3-6-confirm-gate": "§4.3 step 6: confirm candidate_gate == v_gate",
+        "D01-4.3-7-time": "§4.3 step 7: verify exp/nbf against current time subject to clock tolerance",
+        "D01-4.3-8-mismatch-halts": "§4.3 step 8: any mismatch -> malformed; gate decision = halt",
+        "D01-4.4-v_claim": "§4.4: the verified claim MUST be bound via v_claim (text, or hash REQUIRED when text is omitted)",
+        "D01-4.5-mapping-hash-present": "§4.5: v_gate_mapping_hash MUST be present in all conforming receipts",
+        "D01-4.6-old-mapping-verifiable": "§4.6: a receipt issued under an older mapping MUST remain verifiable as correct under that mapping",
+        "D01-4.6-mapping-immutable": "§4.6: publishers MUST treat published mappings as immutable; new rules ship under new identifiers",
+        "D01-5.1-table-shape": "§5.1: the binary act/halt shape derived from the canonical recommendation MUST be preserved",
+        "D01-5.1-row-1": "§5.1 Table 2 row 1: supported, >= threshold, resilient -> confident_supported -> act",
+        "D01-5.1-row-2": "§5.1 Table 2 row 2: supported, >= threshold, not_checked -> un_probed_not_cleared -> halt",
+        "D01-5.1-row-3": "§5.1 Table 2 row 3: supported, any, vulnerable -> vulnerable_supported -> halt",
+        "D01-5.1-row-4": "§5.1 Table 2 row 4: supported, < threshold, resilient or not_checked -> weak_supported -> halt",
+        "D01-5.1-row-5": "§5.1 Table 2 row 5: refuted -> refuted -> halt",
+        "D01-5.1-row-6": "§5.1 Table 2 row 6: unverifiable or unknown -> unverifiable -> halt",
+        "D01-5.1-row-7": "§5.1 Table 2 row 7: error condition -> error -> halt",
+        "D01-5.2-threshold-from-mapping": "§5.2: the threshold is recovered from the named mapping; two receipts under one mapping ID MUST gate against the same threshold",
+        "D01-5.2-uncertainty-halts": "§5.2: un-probed adversarial state is not equivalent to resilient; uncertainty MUST halt (un_probed_not_cleared)",
+        "D01-5.2-no-foreign-threshold": "§5.2: relying parties MUST NOT treat a receipt as conformant under a mapping with a different threshold than that mapping states",
+        "D01-5.3-fail-closed": "§5.3: missing, malformed, expired, signature-invalid or unresolvable-mapping receipts MUST be treated as halt; implementations MUST NOT default to act",
+        "D01-6.2-stale-signature": "§6.2: a stale signature makes the receipt invalid; relying party MUST treat as halt",
+        "D01-6.2-stale-calibration": "§6.2: stale calibration SHOULD be re-evaluated; issuers SHOULD publish recalibration cadence",
+        "D01-6.2-stale-evidence": "§6.2: stale evidence SHOULD be re-evaluated and MUST NOT be honored as a gate signal for new actions",
+        "D01-7.1-publish-anchors": "§7.1: verifier issuers MUST publish calibration anchors (the listed items)",
+        "D01-7.1-harness": "§7.1: verifier issuers SHOULD publish a reference reproduction harness under a permissive license",
+        "D01-7.2-cadence": "§7.2: issuers SHOULD publish a recalibration cadence; v_calibration.valid_until SHOULD reflect it",
+        "D01-9.1-ordering-holds": "§9.1: the §3.2 ordering MUST hold when composed with environment.*",
+        "D01-9.2-key-rotation": "§9.2: issuers MUST rotate JWKS keys on a published cadence; RPs MUST honor key revocation lists",
+        "D01-9.2-replay": "§9.2: RPs MUST verify iat and exp against current time",
+        "D01-9.2-confidence-inflation": "§9.2: RPs SHOULD monitor issuer calibration drift",
+        "D01-9.2-downgrade": "§9.2: a relying party MUST NOT accept a v0.3-spec receipt against a v0.4-spec gate",
+        "D01-9.2-mapping-tampering": "§9.2: receipts MUST bind to a content-addressed mapping; mapping documents MUST be hosted with a stable digest",
+        "D01-10-iana": "§10: IANA considerations (registration statement)"
+      }
+    },
+    "RMT": {
+      "title": "tanilo-receipt-spec README, section 'Mycelium Trails'",
+      "url": "https://github.com/TKCollective/tanilo-receipt-spec/blob/196df22b255e7173d4eb6b20e833cc4e8ae6d35d/README.md#mycelium-trails",
+      "commit": "196df22b255e7173d4eb6b20e833cc4e8ae6d35d",
+      "pinned_by": "not pinned by the manifests (they cite ../../README.md unversioned); revision used is recorded here",
+      "scope": "the three paragraphs of the section only",
+      "requirements": {
+        "RMT-action-ref": "action_ref is computed per draft-giskard-aeoess-action-ref over agent_id, action_type, scope, timestamp (RFC 3339 UTC, exactly 3 fractional digits)",
+        "RMT-trail-sibling": "a returned mycelium_trail_id can be carried at the envelope level as a sibling pointer to v_gate (the composed-envelope spec it defers to is described as forthcoming)"
+      }
+    },
+    "MAP": {
+      "title": "mapping document agentoracle-v0.3-2026-05-30 (recommendation_rules, gate_map, threshold)",
+      "url": "https://agentoracle.co/mappings/agentoracle-v0.3-2026-05-30.json",
+      "sha256": "0a78263976790df6e76cd9f3f441bf5a3b5c3a82e346b5aca43e49626881d7b0",
+      "pinned_by": "conformance/vectors-rule2.json mapping_id; the document is content-addressed (D01 §4.2) and the digest above is the one every composed fixture carries as v_gate_mapping_hash",
+      "scope": "recommendation_rules 1-7, gate_map, threshold",
+      "requirements": {
+        "MAP-rule-1": "rule 1: supported, >= threshold, resilient -> confident_supported",
+        "MAP-rule-2": "rule 2: supported, >= threshold, not_checked -> un_probed_not_cleared",
+        "MAP-rule-3": "rule 3: supported, any, vulnerable -> vulnerable_supported",
+        "MAP-rule-4": "rule 4: supported, < threshold, resilient or not_checked -> weak_supported",
+        "MAP-rule-5": "rule 5: refuted -> refuted",
+        "MAP-rule-6": "rule 6: unverifiable or unknown -> unverifiable",
+        "MAP-rule-7": "rule 7: error condition -> error",
+        "MAP-gate_map": "gate_map: only confident_supported -> act; every other recommendation -> halt",
+        "MAP-threshold": "threshold: v_confidence >= 0.7; the threshold lives in the mapping, not in receipts"
+      }
+    },
+    "EP": {
+      "title": "evidence-pinning section for draft -02 (review draft + amendments), as pinned by the rev8 fixture header",
+      "texts": {
+        "review-draft": {
+          "path": "drafts/evidence-pinning-02-review-draft.md",
+          "sha256": "9832156998ceb35f25d08c5be2d4d7c314477b25045f4499e07f3c5e501f5096",
+          "pinned_by": "fixture header spec_bases.review_draft_sha256"
+        },
+        "rev5": {
+          "path": "drafts/evidence-pinning-02-amendments-rev5-2026-09-06.md",
+          "sha256": "1f901fd7d56fcfe9f858446e5b685b540b5904d6abcfb4b2509e1eb675aa1e51",
+          "pinned_by": "spec_bases.rev5_sha256"
+        },
+        "rev6": {
+          "path": "drafts/evidence-pinning-02-amendments-rev6-2026-09-08.md",
+          "sha256": "d62ded37dcf63f541e5b670b0cc0f7876e04a182064eb06a32af0037effaf026",
+          "pinned_by": "spec_bases.rev6_sha256"
+        },
+        "rev7": {
+          "path": "drafts/evidence-pinning-02-amendments-rev7-2026-09-09.md",
+          "sha256": "6b13f6fc35d745c2642edcb52a2754f7cd43340ded3248b5d1ba70a431d6c037",
+          "pinned_by": "spec_bases.rev7_sha256"
+        },
+        "rev8": {
+          "path": "drafts/evidence-pinning-02-amendments-rev8-2026-09-17.md",
+          "sha256": "6a1ca7844396055e4a2b76dd925cc623f0e530885c50b16f747b51e6a0aaecad",
+          "pinned_by": "spec_bases.rev8_sha256"
+        },
+        "rev2": {
+          "path": "drafts/evidence-pinning-02-amendments-rev2-2026-09-04.md",
+          "sha256": "a957802a4ed4d5a4097e2066fd0be4cbc5bf5d777ebbd5809e47f3bd4637bf74",
+          "pinned_by": "NOT pinned by the fixture header; revision used is the file at the snapshot commit (digest filled at generation)"
+        },
+        "rev4": {
+          "path": "drafts/evidence-pinning-02-amendments-rev4-2026-09-06.md",
+          "sha256": "060fc52c067b5d7da5a57d3ea6ef32e05aa0417bc4b1abd9fdf0f9f9faed731c",
+          "pinned_by": "NOT pinned by the fixture header; revision used is the file at the snapshot commit (digest filled at generation)"
+        }
+      },
+      "scope": "the evidence-pinning section only (review draft §4.1 evidence_set, §4.1.1, §4.1.2, the §4.3 step, §5; the normative findings of the amendments that change that section). Not the rest of -02.",
+      "requirements": {
+        "EP-4.1-members": "review draft §4.1: an evidence_set, when present, MUST be an object with evidence_set_version, retrieved_at, source_count, pinned_count (<= source_count), fully_pinned, evidence_root, sources",
+        "EP-4.1-fully_pinned-stated": "review draft §4.1: fully_pinned is stated, not derived; an issuer MUST NOT omit it when some items are unpinned; partial pinning is an honest state",
+        "EP-4.1.1-entry-members": "review draft §4.1.1 as amended (rev2 §3): each sources entry carries url, snippet_sha256 (or null), retrieved_at, pinned, and content_kind when pinned",
+        "EP-4.1.1-digest-as-received": "review draft §4.1.1: snippet_sha256 is computed over the content exactly as received, UTF-8, no normalization",
+        "EP-4.1.1-url-bytes": "rev2 §3: the url carried in an entry MUST be the URI bytes used for retrieval, without normalization",
+        "EP-4.1.1-possession": "rev2 §3 (possession rule): an issuer MUST pin every item for which it received content bytes; every pinned: false entry MUST carry an unpinned_reason from the stated domain; an item outside that domain or without a reason is malformed",
+        "EP-4.1.1-content_kind": "rev2 §3 / rev6 Finding 30: content_kind MUST be present and one of the defined values when pinned; on an unpinned entry it MUST be absent or null (equivalent)",
+        "EP-4.1.1-full_resource": "rev4 Finding 19 / rev8 Finding 42: a full_resource entry does not carry resource_sha256 (the rule ranges over every entry)",
+        "EP-4.1.1-pinned-boolean": "rev8 Finding 40: pinned is REQUIRED on every entry and MUST be exactly true or false; anything else halts",
+        "EP-4.1.2-leaf": "review draft §4.1.2 as amended (rev2 Finding 1, rev4 Finding 15a, prefix ao-evidence-leaf-v2): the leaf preimage binds url, snippet_sha256, content_kind and retrieved_at with 0x00 separators",
+        "EP-4.1.2-node": "review draft §4.1.2 / rev6 Finding 27: interior node = SHA-256(prefix || 0x00 || left || 0x00 || right) over the raw 32-octet children",
+        "EP-4.1.2-odd-promotion": "review draft §4.1.2 / rev6 Finding 28: an odd final entry is promoted unchanged, never duplicated; termination stated",
+        "EP-4.1.2-canonical-order": "review draft §4.1.2 as amended (rev4 Finding 15c): leaves sort ascending by the four-term key url, snippet_sha256, content_kind, retrieved_at, bytewise over UTF-8",
+        "EP-4.1.2-domain-separation": "review draft §4.1.2: distinct leaf and node prefixes; a leaf hash can never be reinterpreted as a node",
+        "EP-4.1.2-empty-root-null": "review draft §4.1.2 / rev8 Finding 43: when pinned_count is zero evidence_root MUST be null; a non-null root with zero pinned entries, or a null root with pinned entries, is malformed",
+        "EP-4.1.2-no-identical-entries": "rev5 Finding 24a / rev8 Finding 35: two entries MUST NOT be identical across the bound members; the identity rule ranges over every entry, pinned or unpinned (duplicate_bound_tuple)",
+        "EP-4.1.2-retrieved_at-form": "rev6 Finding 32 / rev8 Finding 37: retrieved_at MUST be RFC 3339 UTC with Z and exactly three fractional digits; the rule ranges over every entry",
+        "EP-4.1-set-retrieved_at-least": "rev8 Finding 36: the set-level retrieved_at MUST equal the bytewise-least retrieved_at among all entries",
+        "EP-4.3-a-counts": "review draft §4.3 (a) as amended (rev5 24d, rev8 Findings 41, 44): pinned_count, source_count and fully_pinned MUST be consistent with the entries; absent declared counts derive from the entries and MUST NOT halt for want of them",
+        "EP-4.3-a-snippet-required": "rev8 Finding 46: step (a) MUST halt on a pinned entry whose snippet_sha256 is absent or null, and MUST NOT let it reach leaf or root construction",
+        "EP-4.3-b-root-recompute": "review draft §4.3 (b): a non-null evidence_root is recomputed from sources; a mismatch is malformed and halts",
+        "EP-4.3-c-content-unknown": "review draft §4.3 (c) as amended (rev4 Finding 17, rev8 Finding 45): a content mismatch, or content not held, resolves unknown for that item with a per-item reason (content_differs | content_not_held) and MUST NOT halt",
+        "EP-4.3-d-absent-unknown": "review draft §4.3 (d): a receipt carrying no evidence_set resolves unknown for the step and MUST NOT fail it",
+        "EP-4.3-resolved-token": "rev6 Finding 29: the affirmative step resolution is the token resolved; an implementation MUST emit resolved or unknown and no other value",
+        "EP-4.3-diagnostic-naming": "rev6 Finding 31: when more than one condition is violated the implementation halts on the first in section order and names it; a vector injecting more than one condition MUST state which",
+        "EP-4.3-empty-set": "rev4 Finding 20: an evidence_set whose sources names no entries is malformed (evidence_set_names_no_sources)",
+        "EP-4.3-condition-identifiers": "rev7 Finding 33 / rev8 Finding 38: MALFORMED outcomes are reported with a condition identifier from the registry; superseded identifiers are published as such and fail the build",
+        "EP-5-non-establishment": "review draft §5: a pinned evidence set establishes nothing about truth, sufficiency, independence or completeness of retrieval; implementations SHOULD NOT present it as if it did"
+      }
+    }
+  },
+  "external_documents": {
+    "EXT-action-ref-v1": {
+      "title": "action-ref-v1 (giskard09/argentum-core docs/spec/action-ref.md)",
+      "pinned": "commit 16dbc92 (v0.3 and v0.4 manifests)",
+      "note": "third-party text; out of the in-scope document set"
+    },
+    "EXT-delegation-chain-ref-v1": {
+      "title": "delegation-chain-ref-v1 (giskard09/argentum-core docs/spec/delegation-chain-ref.md)",
+      "pinned": "commit 16e140a (v0.4 manifest); unpinned in the leaf-screen-halt README",
+      "note": "third-party text; out of the in-scope document set"
+    },
+    "EXT-signing-trust-ref-v1": {
+      "title": "signing-trust-ref-v1 (giskard09/argentum-core)",
+      "pinned": "commit 16dbc92 per the v0.3 README",
+      "note": "third-party text; the composed checkers do not assert it"
+    },
+    "EXT-mycelium-provider-protocol": {
+      "title": "Mycelium Provider protocol (giskard09/argentum-core docs/mycelium-provider-protocol.md)",
+      "pinned": "unpinned (README links main)",
+      "note": "third-party text; comp-r02's null rule cites it and 'the AgentOracle composed envelope spec', which README@196df22b describes as forthcoming"
+    },
+    "EXT-service-integrity-D1": {
+      "title": "service_integrity.md rule D1 (x402-research-skill standing rules): a zero-member evaluation MUST NOT produce a signed receipt",
+      "pinned": "not a format requirement; operational rule",
+      "note": "d1-no-receipt records it; conformance/check.mjs skips it"
+    }
+  },
+  "corpora": {
+    "v0.3-composed": {
+      "manifest": "examples/v0.3-composed/vectors.json",
+      "manifest_sha256": "6304caee9a70d5a0a7820fd235709bd3263b10f56187a479649d01b35807b394",
+      "normative": true,
+      "requirement_documents": [
+        "D01",
+        "RMT"
+      ],
+      "external_documents": [
+        "EXT-action-ref-v1",
+        "EXT-signing-trust-ref-v1",
+        "EXT-mycelium-provider-protocol"
+      ],
+      "checkers": [
+        "examples/v0.3-composed/verify.mjs",
+        "examples/v0.3-composed/verify.py"
+      ],
+      "vectors": [
+        {
+          "id": "comp-001",
+          "description": "Happy path — both issuers approve. No trail anchor.",
+          "kind": "accept",
+          "requirements": [
+            {
+              "requirement": "D01-4.3-1-signature",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "every signatures[] entry verifies (Ed25519) against the JWKS matched by kid; signature_invalid otherwise"
+            },
+            {
+              "requirement": "D01-4.1-kid",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "kid MUST be present and found in some issuer JWKS (jws_missing_kid, jws_kid_not_found_in_any_jwks)"
+            },
+            {
+              "requirement": "D01-4.1-alg",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "alg MUST be EdDSA (jws_alg_not_EdDSA); ES256 acceptance is not exercised",
+              "note": "the -01 requirement is to accept both; the fixtures sign only EdDSA and the checker rejects anything else"
+            },
+            {
+              "requirement": "D01-4.1-jws",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "JWS General Serialization envelope is parsed and verified",
+              "note": "only the general (multi-signature) form is exercised; compact and flattened forms are not"
+            },
+            {
+              "requirement": "D01-3.2-conjunction",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "composed_decision recomputed by AND over every present sibling verdict (v_gate, v_gate_skill, screen_ref, delegation_chain_ref) and compared with the signed value"
+            },
+            {
+              "requirement": "D01-4.3-sequence",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "any failed check returns ok:false with a reason; the runner fails the vector",
+              "note": "the composed checker executes its own sequence, not the -01 eight-step sequence: steps 2-7 (mapping fetch, recommendation and gate recompute, time) are not executed"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "comp-002",
+          "description": "AgentOracle approves, AgentTrust halts on skill — composed halts.",
+          "kind": "accept",
+          "requirements": [
+            {
+              "requirement": "D01-4.3-1-signature",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "every signatures[] entry verifies (Ed25519) against the JWKS matched by kid; signature_invalid otherwise"
+            },
+            {
+              "requirement": "D01-4.1-kid",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "kid MUST be present and found in some issuer JWKS (jws_missing_kid, jws_kid_not_found_in_any_jwks)"
+            },
+            {
+              "requirement": "D01-4.1-alg",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "alg MUST be EdDSA (jws_alg_not_EdDSA); ES256 acceptance is not exercised",
+              "note": "the -01 requirement is to accept both; the fixtures sign only EdDSA and the checker rejects anything else"
+            },
+            {
+              "requirement": "D01-4.1-jws",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "JWS General Serialization envelope is parsed and verified",
+              "note": "only the general (multi-signature) form is exercised; compact and flattened forms are not"
+            },
+            {
+              "requirement": "D01-3.2-conjunction",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "composed_decision recomputed by AND over every present sibling verdict (v_gate, v_gate_skill, screen_ref, delegation_chain_ref) and compared with the signed value"
+            },
+            {
+              "requirement": "D01-4.3-sequence",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "any failed check returns ok:false with a reason; the runner fails the vector",
+              "note": "the composed checker executes its own sequence, not the -01 eight-step sequence: steps 2-7 (mapping fetch, recommendation and gate recompute, time) are not executed"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "comp-003",
+          "description": "AgentTrust approves, AgentOracle refutes the claim — composed halts.",
+          "kind": "accept",
+          "requirements": [
+            {
+              "requirement": "D01-4.3-1-signature",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "every signatures[] entry verifies (Ed25519) against the JWKS matched by kid; signature_invalid otherwise"
+            },
+            {
+              "requirement": "D01-4.1-kid",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "kid MUST be present and found in some issuer JWKS (jws_missing_kid, jws_kid_not_found_in_any_jwks)"
+            },
+            {
+              "requirement": "D01-4.1-alg",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "alg MUST be EdDSA (jws_alg_not_EdDSA); ES256 acceptance is not exercised",
+              "note": "the -01 requirement is to accept both; the fixtures sign only EdDSA and the checker rejects anything else"
+            },
+            {
+              "requirement": "D01-4.1-jws",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "JWS General Serialization envelope is parsed and verified",
+              "note": "only the general (multi-signature) form is exercised; compact and flattened forms are not"
+            },
+            {
+              "requirement": "D01-3.2-conjunction",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "composed_decision recomputed by AND over every present sibling verdict (v_gate, v_gate_skill, screen_ref, delegation_chain_ref) and compared with the signed value"
+            },
+            {
+              "requirement": "D01-4.3-sequence",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "any failed check returns ok:false with a reason; the runner fails the vector",
+              "note": "the composed checker executes its own sequence, not the -01 eight-step sequence: steps 2-7 (mapping fetch, recommendation and gate recompute, time) are not executed"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "comp-004",
+          "description": "Happy path with a resolved mycelium_trail_id present.",
+          "kind": "accept",
+          "requirements": [
+            {
+              "requirement": "D01-4.3-1-signature",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "every signatures[] entry verifies (Ed25519) against the JWKS matched by kid; signature_invalid otherwise"
+            },
+            {
+              "requirement": "D01-4.1-kid",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "kid MUST be present and found in some issuer JWKS (jws_missing_kid, jws_kid_not_found_in_any_jwks)"
+            },
+            {
+              "requirement": "D01-4.1-alg",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "alg MUST be EdDSA (jws_alg_not_EdDSA); ES256 acceptance is not exercised",
+              "note": "the -01 requirement is to accept both; the fixtures sign only EdDSA and the checker rejects anything else"
+            },
+            {
+              "requirement": "D01-4.1-jws",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "JWS General Serialization envelope is parsed and verified",
+              "note": "only the general (multi-signature) form is exercised; compact and flattened forms are not"
+            },
+            {
+              "requirement": "D01-3.2-conjunction",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "composed_decision recomputed by AND over every present sibling verdict (v_gate, v_gate_skill, screen_ref, delegation_chain_ref) and compared with the signed value"
+            },
+            {
+              "requirement": "D01-4.3-sequence",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "any failed check returns ok:false with a reason; the runner fails the vector",
+              "note": "the composed checker executes its own sequence, not the -01 eight-step sequence: steps 2-7 (mapping fetch, recommendation and gate recompute, time) are not executed"
+            },
+            {
+              "requirement": "RMT-trail-sibling",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "mycelium_trail_id, when the key is present, MUST NOT be null (absent or string)",
+              "note": "the README says the pointer 'can be carried'; the absent-not-null rule is in EXT-mycelium-provider-protocol and the composed-envelope spec the README defers to"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "comp-005",
+          "description": "Three-signer: AO act + AT act + Presidio PII_REDACTED screen (act) → composed act. screen_ref byte-matches argentum-core presidio-x402-003.",
+          "kind": "accept",
+          "requirements": [
+            {
+              "requirement": "D01-4.3-1-signature",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "every signatures[] entry verifies (Ed25519) against the JWKS matched by kid; signature_invalid otherwise"
+            },
+            {
+              "requirement": "D01-4.1-kid",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "kid MUST be present and found in some issuer JWKS (jws_missing_kid, jws_kid_not_found_in_any_jwks)"
+            },
+            {
+              "requirement": "D01-4.1-alg",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "alg MUST be EdDSA (jws_alg_not_EdDSA); ES256 acceptance is not exercised",
+              "note": "the -01 requirement is to accept both; the fixtures sign only EdDSA and the checker rejects anything else"
+            },
+            {
+              "requirement": "D01-4.1-jws",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "JWS General Serialization envelope is parsed and verified",
+              "note": "only the general (multi-signature) form is exercised; compact and flattened forms are not"
+            },
+            {
+              "requirement": "D01-3.2-conjunction",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "composed_decision recomputed by AND over every present sibling verdict (v_gate, v_gate_skill, screen_ref, delegation_chain_ref) and compared with the signed value"
+            },
+            {
+              "requirement": "D01-4.3-sequence",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "any failed check returns ok:false with a reason; the runner fails the vector",
+              "note": "the composed checker executes its own sequence, not the -01 eight-step sequence: steps 2-7 (mapping fetch, recommendation and gate recompute, time) are not executed"
+            },
+            {
+              "requirement": "RMT-action-ref",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "screen_ref.action_ref recomputed as SHA-256(JCS({agent_id, action_type, scope, timestamp})) and compared with the signed value"
+            }
+          ],
+          "external_requirements": [
+            {
+              "requirement": "EXT-action-ref-v1",
+              "assertion": "screen_ref.action_ref recomputed from the four-field preimage and compared (screen_ref_action_ref_mismatch)"
+            }
+          ]
+        },
+        {
+          "id": "comp-006",
+          "description": "Three-signer: AO act + AT act, but Presidio PII_BLOCKED screen (halt) is the decisive leg → composed halts. A payment both gates approved is stopped by the screen. screen_ref = presidio-x402-004.",
+          "kind": "accept",
+          "requirements": [
+            {
+              "requirement": "D01-4.3-1-signature",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "every signatures[] entry verifies (Ed25519) against the JWKS matched by kid; signature_invalid otherwise"
+            },
+            {
+              "requirement": "D01-4.1-kid",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "kid MUST be present and found in some issuer JWKS (jws_missing_kid, jws_kid_not_found_in_any_jwks)"
+            },
+            {
+              "requirement": "D01-4.1-alg",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "alg MUST be EdDSA (jws_alg_not_EdDSA); ES256 acceptance is not exercised",
+              "note": "the -01 requirement is to accept both; the fixtures sign only EdDSA and the checker rejects anything else"
+            },
+            {
+              "requirement": "D01-4.1-jws",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "JWS General Serialization envelope is parsed and verified",
+              "note": "only the general (multi-signature) form is exercised; compact and flattened forms are not"
+            },
+            {
+              "requirement": "D01-3.2-conjunction",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "composed_decision recomputed by AND over every present sibling verdict (v_gate, v_gate_skill, screen_ref, delegation_chain_ref) and compared with the signed value"
+            },
+            {
+              "requirement": "D01-4.3-sequence",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "any failed check returns ok:false with a reason; the runner fails the vector",
+              "note": "the composed checker executes its own sequence, not the -01 eight-step sequence: steps 2-7 (mapping fetch, recommendation and gate recompute, time) are not executed"
+            },
+            {
+              "requirement": "RMT-action-ref",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "screen_ref.action_ref recomputed as SHA-256(JCS({agent_id, action_type, scope, timestamp})) and compared with the signed value"
+            }
+          ],
+          "external_requirements": [
+            {
+              "requirement": "EXT-action-ref-v1",
+              "assertion": "screen_ref.action_ref recomputed from the four-field preimage and compared (screen_ref_action_ref_mismatch)"
+            }
+          ]
+        },
+        {
+          "id": "comp-007",
+          "description": "Three-signer: AO act + AT act + Presidio clean-allow screen (act, no entity segment) → composed act. screen_ref = presidio-x402-005.",
+          "kind": "accept",
+          "requirements": [
+            {
+              "requirement": "D01-4.3-1-signature",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "every signatures[] entry verifies (Ed25519) against the JWKS matched by kid; signature_invalid otherwise"
+            },
+            {
+              "requirement": "D01-4.1-kid",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "kid MUST be present and found in some issuer JWKS (jws_missing_kid, jws_kid_not_found_in_any_jwks)"
+            },
+            {
+              "requirement": "D01-4.1-alg",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "alg MUST be EdDSA (jws_alg_not_EdDSA); ES256 acceptance is not exercised",
+              "note": "the -01 requirement is to accept both; the fixtures sign only EdDSA and the checker rejects anything else"
+            },
+            {
+              "requirement": "D01-4.1-jws",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "JWS General Serialization envelope is parsed and verified",
+              "note": "only the general (multi-signature) form is exercised; compact and flattened forms are not"
+            },
+            {
+              "requirement": "D01-3.2-conjunction",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "composed_decision recomputed by AND over every present sibling verdict (v_gate, v_gate_skill, screen_ref, delegation_chain_ref) and compared with the signed value"
+            },
+            {
+              "requirement": "D01-4.3-sequence",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "any failed check returns ok:false with a reason; the runner fails the vector",
+              "note": "the composed checker executes its own sequence, not the -01 eight-step sequence: steps 2-7 (mapping fetch, recommendation and gate recompute, time) are not executed"
+            },
+            {
+              "requirement": "RMT-action-ref",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "screen_ref.action_ref recomputed as SHA-256(JCS({agent_id, action_type, scope, timestamp})) and compared with the signed value"
+            }
+          ],
+          "external_requirements": [
+            {
+              "requirement": "EXT-action-ref-v1",
+              "assertion": "screen_ref.action_ref recomputed from the four-field preimage and compared (screen_ref_action_ref_mismatch)"
+            }
+          ]
+        },
+        {
+          "id": "comp-r01",
+          "description": "One signature valid, one signature tampered (AgentTrust signature corrupted). Entire envelope MUST reject.",
+          "kind": "reject",
+          "expected_failure": "signature_invalid",
+          "requirements": [
+            {
+              "requirement": "D01-4.3-1-signature",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "a corrupted AgentTrust signature is rejected: signature_invalid"
+            },
+            {
+              "requirement": "D01-5.3-fail-closed",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "a signature-invalid envelope is rejected as a whole; no partial acceptance"
+            },
+            {
+              "requirement": "D01-4.3-8-mismatch-halts",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "the envelope is rejected",
+              "note": "the checker reports ok:false; it does not emit a gate decision"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "comp-r02",
+          "description": "mycelium_trail_id is null. Per the Mycelium Provider protocol (and the AgentOracle composed envelope spec) the field MUST be absent (not null) when /external/trail fails. Verifiers MUST reject envelopes whose mycelium_trail_id is null.",
+          "kind": "reject",
+          "expected_failure": "mycelium_trail_id_is_null",
+          "requirements": [
+            {
+              "requirement": "RMT-trail-sibling",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "mycelium_trail_id: null is rejected (mycelium_trail_id_is_null)",
+              "note": "the null prohibition is not stated in README@196df22b; it comes from the Mycelium Provider protocol and the unpublished composed-envelope spec"
+            }
+          ],
+          "external_requirements": [
+            {
+              "requirement": "EXT-mycelium-provider-protocol",
+              "assertion": "null pointer rejected"
+            }
+          ]
+        },
+        {
+          "id": "comp-r03",
+          "description": "composed_decision = 'act' but v_gate verdict is 'halt' — violates AND_PRESENT rule. Verifier MUST recompute composed_decision from the present sibling pointers and reject on mismatch with the signed value.",
+          "kind": "reject",
+          "expected_failure": "composed_decision_rule_violated",
+          "requirements": [
+            {
+              "requirement": "D01-3.2-conjunction",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "signed composed_decision act with v_gate halt is rejected on recompute (composed_decision_rule_violated)"
+            },
+            {
+              "requirement": "D01-4.3-8-mismatch-halts",
+              "coverage": "partial",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "mismatch between a signed value and its recompute rejects the envelope",
+              "note": "no gate decision is emitted by the checker"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "comp-r04",
+          "description": "screen_ref.action_ref is present but does not equal the action-ref-v1 recompute of screen_ref.screen (the four-field preimage). Verifiers MUST recompute and reject; trusting the emitted hash would let a screen claim a screening decision (the scope it recorded) it never derived.",
+          "kind": "reject",
+          "expected_failure": "screen_ref_action_ref_mismatch",
+          "requirements": [
+            {
+              "requirement": "RMT-action-ref",
+              "coverage": "covered",
+              "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "an action_ref that is not the four-field recompute is rejected (screen_ref_action_ref_mismatch)"
+            }
+          ],
+          "external_requirements": [
+            {
+              "requirement": "EXT-action-ref-v1",
+              "assertion": "screen_ref.action_ref differing from the action-ref-v1 recompute is rejected (screen_ref_action_ref_mismatch)"
+            }
+          ]
+        }
+      ],
+      "vector_count": 11
+    },
+    "v0.4-composed": {
+      "manifest": "examples/v0.4-composed/vectors.json",
+      "manifest_sha256": "03b8f12aeec7503a3021d730459ebcd0f20820b56cf332448190a8e0dff0c568",
+      "normative": true,
+      "requirement_documents": [
+        "D01",
+        "RMT"
+      ],
+      "external_documents": [
+        "EXT-action-ref-v1",
+        "EXT-delegation-chain-ref-v1",
+        "EXT-signing-trust-ref-v1"
+      ],
+      "checkers": [
+        "examples/v0.4-composed/verify.mjs",
+        "examples/v0.4-composed/verify.py"
+      ],
+      "vectors": [
+        {
+          "id": "comp-008",
+          "description": "Four-signer: AO act + AT act + Presidio act + Argentum act over a valid two-hop delegation chain (x402:* narrows to x402:payment). Root anchoring holds and leaf_action_ref recomputes from leaf_preimage, so composed act.",
+          "kind": "accept",
+          "requirements": [
+            {
+              "requirement": "D01-4.3-1-signature",
+              "coverage": "covered",
+              "checker": "examples/v0.4-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "every signatures[] entry verifies (Ed25519) against the JWKS matched by kid; signature_invalid otherwise"
+            },
+            {
+              "requirement": "D01-4.1-kid",
+              "coverage": "covered",
+              "checker": "examples/v0.4-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "kid MUST be present and found in some issuer JWKS (jws_missing_kid, jws_kid_not_found_in_any_jwks)"
+            },
+            {
+              "requirement": "D01-4.1-alg",
+              "coverage": "partial",
+              "checker": "examples/v0.4-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "alg MUST be EdDSA (jws_alg_not_EdDSA); ES256 acceptance is not exercised",
+              "note": "the -01 requirement is to accept both; the fixtures sign only EdDSA and the checker rejects anything else"
+            },
+            {
+              "requirement": "D01-4.1-jws",
+              "coverage": "partial",
+              "checker": "examples/v0.4-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "JWS General Serialization envelope is parsed and verified",
+              "note": "only the general (multi-signature) form is exercised; compact and flattened forms are not"
+            },
+            {
+              "requirement": "D01-3.2-conjunction",
+              "coverage": "covered",
+              "checker": "examples/v0.4-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "composed_decision recomputed by AND over every present sibling verdict (v_gate, v_gate_skill, screen_ref, delegation_chain_ref) and compared with the signed value"
+            },
+            {
+              "requirement": "D01-4.3-sequence",
+              "coverage": "partial",
+              "checker": "examples/v0.4-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "any failed check returns ok:false with a reason; the runner fails the vector",
+              "note": "the composed checker executes its own sequence, not the -01 eight-step sequence: steps 2-7 (mapping fetch, recommendation and gate recompute, time) are not executed"
+            },
+            {
+              "requirement": "RMT-action-ref",
+              "coverage": "covered",
+              "checker": "examples/v0.4-composed/verify.mjs (mirrored by verify.py)",
+              "assertion": "screen_ref.action_ref recomputed as SHA-256(JCS(four fields)) and compared"
+            }
+          ],
+          "external_requirements": [
+            {
+              "requirement": "EXT-action-ref-v1",
+              "assertion": "screen_ref.action_ref recomputed and compared"
+            },
+            {
+              "requirement": "EXT-delegation-chain-ref-v1",
+              "assertion": "chain content address, continuity, root anchoring, leaf anchoring, leaf scope and monotonic narrowing all checked"
+            }
+          ]
+        },
+        {
+          "id": "comp-r05",
+          "description": "delegation_chain_ref hop 1 widens scope: hops[0].scope is x402:payment and hops[1].scope is x402:* , which is broader. Verifiers MUST enforce monotonic narrowing per argentum-core delegation-chain-ref-v1 (failure_mode scope_widening) and reject. Root anchoring, chain continuity, the chain content address, and leaf anchoring all remain valid so the reject isolates narrowing.",
+          "kind": "reject",
+          "expected_failure": "delegation_chain_ref_scope_widening",
+          "requirements": [],
+          "external_requirements": [
+            {
+              "requirement": "EXT-delegation-chain-ref-v1",
+              "assertion": "scope widening between hops rejected (delegation_chain_ref_scope_widening)"
+            }
+          ],
+          "notes": [
+            "no in-scope requirement: the decisive rule is third-party (delegation-chain-ref-v1 @16e140a)"
+          ]
+        },
+        {
+          "id": "comp-r06",
+          "description": "delegation_chain_ref chain continuity broken: hops[0].delegatee does not equal hops[1].delegator. Verifiers MUST enforce continuity per argentum-core delegation-chain-ref-v1 (failure_mode chain_break) and reject. Monotonic narrowing, root anchoring, the chain content address, and leaf anchoring all remain valid so the reject isolates continuity.",
+          "kind": "reject",
+          "expected_failure": "delegation_chain_ref_chain_break",
+          "requirements": [],
+          "external_requirements": [
+            {
+              "requirement": "EXT-delegation-chain-ref-v1",
+              "assertion": "hops[0].delegatee != hops[1].delegator rejected (delegation_chain_ref_chain_break)"
+            }
+          ],
+          "notes": [
+            "no in-scope requirement: the decisive rule is third-party (delegation-chain-ref-v1 @16e140a)"
+          ]
+        }
+      ],
+      "vector_count": 3
+    },
+    "evidence-pinning-rev8": {
+      "manifest": "fixtures/evidence-pinning-fixtures-v2-rev8.json",
+      "manifest_sha256": "6ac833edc7e8b915f9962cbc86043f088a1e944c8092a0a494f805dd65bb62b5",
+      "normative": true,
+      "status": "FINAL (rev8)",
+      "requirement_documents": [
+        "EP"
+      ],
+      "external_documents": [],
+      "checkers": [
+        "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs (published, same author as the generator)",
+        "fixtures/evidence-pinning-fixture-generator-rev8.py (emitter validation)",
+        "external: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py"
+      ],
+      "vectors": [
+        {
+          "id": "evi-root-order-independent",
+          "designation": "CANONICAL ORDER",
+          "expect": "identical evidence_root",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-canonical-order",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "identical evidence_root from two input orders (root_1 == root_2 recomputed)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-root-odd-promotion",
+          "designation": "ODD NODE",
+          "expect": "root matches promote-not-duplicate (three sorted leaves, third promoted unchanged)",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-odd-promotion",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "root equals promote-not-duplicate construction"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-node-child-encoding",
+          "designation": "NODE PREIMAGE",
+          "expect": "evidence_root MUST equal normative_root and MUST NOT equal counter_construction_root. The encoding is stated normatively in the specification and is deliberately not restated here.",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-node",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "root equals normative_root (raw-octet children) and differs from counter_construction_root"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-leaf-member-encoding",
+          "designation": "LEAF PREIMAGE",
+          "expect": "evidence_root MUST equal normative_root and MUST NOT equal counter_construction_root. The encoding is stated normatively in the specification and is deliberately not restated here.",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-leaf",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "root equals normative_root and differs from the counter construction"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-snippet-change-changes-root",
+          "designation": "BINDING",
+          "expect": "roots differ",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-leaf",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "a one-digest change changes the root"
+            },
+            {
+              "requirement": "EP-4.1.1-digest-as-received",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "the digest, not the source text, is bound"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-url-normalization-changes-root",
+          "designation": "BINDING",
+          "expect": "roots differ; unnormalized bytes are normative",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.1-url-bytes",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "unnormalized url bytes are normative: roots differ"
+            },
+            {
+              "requirement": "EP-4.1.2-leaf",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "url bound in the leaf"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-duplicate-url-distinct-digest",
+          "designation": "CANONICAL ORDER",
+          "expect": "deterministic order by the four-term key of §4.1.2; stable root",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-canonical-order",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "two entries sharing a url order deterministically by the four-term key; stable root"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-leaf-binds-content-kind",
+          "designation": "LEAF PREIMAGE",
+          "expect": "evidence_root differs",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-leaf",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "content_kind is bound in the leaf preimage: root differs"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-leaf-binds-retrieved-at",
+          "designation": "LEAF PREIMAGE",
+          "expect": "evidence_root differs",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-leaf",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "retrieved_at is bound in the leaf preimage: root differs"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-order-tiebreak-content-kind",
+          "designation": "CANONICAL ORDER",
+          "expect": "identical evidence_root both ways",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-canonical-order",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "content_kind tie-break: identical root both ways"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-order-tiebreak-retrieved-at",
+          "designation": "CANONICAL ORDER",
+          "expect": "identical evidence_root both ways",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-canonical-order",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "retrieved_at tie-break: identical root both ways"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-set-retrieved-at-not-earliest-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed",
+          "condition": "set_retrieved_at_not_bytewise_least",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1-set-retrieved_at-least",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition set_retrieved_at_not_bytewise_least"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-content-kind-absent-when-pinned-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed; diagnostic names the missing member, not a root mismatch",
+          "condition": "content_kind_absent_when_pinned",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.1-content_kind",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition content_kind_absent_when_pinned"
+            },
+            {
+              "requirement": "EP-4.3-diagnostic-naming",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "diagnostic names the missing member, not a root mismatch"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-resource-sha256-with-full-resource-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed",
+          "condition": "snippet_digest_present_for_full_resource",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.1-full_resource",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition snippet_digest_present_for_full_resource"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-full-resource-digest-on-unpinned-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed; the two-state MUST (Finding 40) makes this entry's pinned value determinate, so F19 sees it despite pinned being false",
+          "condition": "snippet_digest_present_for_full_resource",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.1-full_resource",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "the rule ranges over an unpinned entry too (Finding 42)"
+            },
+            {
+              "requirement": "EP-4.1.1-pinned-boolean",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "the two-state pinned MUST makes the entry's state determinate (Finding 40)"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-pinned-absent-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed; `pinned` is absent, which is neither `true` nor `false` and is no longer a permitted third case",
+          "condition": "pinned_absent_or_not_boolean",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.1-pinned-boolean",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition pinned_absent_or_not_boolean (absent)"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-pinned-not-boolean-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed; `pinned` is present but not a JSON boolean",
+          "condition": "pinned_absent_or_not_boolean",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.1-pinned-boolean",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition pinned_absent_or_not_boolean (non-boolean)"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-snippet-sha256-absent-when-pinned-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed at step (a); MUST NOT reach leafHash/computeRoot and MUST NOT surface as an uncaught exception",
+          "condition": "snippet_sha256_absent_when_pinned",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.3-a-snippet-required",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition snippet_sha256_absent_when_pinned; MUST NOT reach leafHash/computeRoot"
+            },
+            {
+              "requirement": "EP-4.1.1-entry-members",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "snippet_sha256 required on a pinned entry"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-empty-set-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed",
+          "condition": "evidence_set_names_no_sources",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.3-empty-set",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition evidence_set_names_no_sources"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-duplicate-bound-tuple-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed",
+          "condition": "duplicate_bound_tuple",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-no-identical-entries",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition duplicate_bound_tuple"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-unpinned-reason-outside-domain-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed",
+          "condition": "unpinned_reason_outside_domain",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.1-possession",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition unpinned_reason_outside_domain"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-unpinned-without-reason-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed",
+          "condition": "unpinned_without_reason",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.1-possession",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition unpinned_without_reason"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-source-count-mismatch-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed",
+          "condition": "source_count_disagrees_with_sources",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.3-a-counts",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition source_count_disagrees_with_sources"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-count-inconsistency-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed",
+          "condition": "pinned_count_disagrees_with_pinned_entries",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.3-a-counts",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition pinned_count_disagrees_with_pinned_entries"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-root-with-zero-pinned-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed",
+          "condition": "root_present_with_zero_pinned",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-empty-root-null",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition root_present_with_zero_pinned"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-nonzero-pinned-null-root-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed",
+          "condition": "root_null_with_pinned_entries",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-empty-root-null",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition root_null_with_pinned_entries"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-fully-pinned-fallback-derives-from-sources-accepted",
+          "designation": "ADDITIVE",
+          "expect": "accepted; NOT malformed. fully_pinned=False is consistent with the derived source_count=3 (len(sources)) and derived pinned_count=2 (entries with pinned: true), which is well-defined only because Finding 40 forecloses a pinned-absent third bucket",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.3-a-counts",
+              "coverage": "partial",
+              "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "accepted; fully_pinned=false consistent with derived counts (Finding 41)"
+            }
+          ],
+          "external_requirements": [],
+          "notes": [
+            "the external cold-checker run (babyblueviper1, 2026-09-29) disagrees on this vector: it omits snippet_sha256 on an unpinned entry, which -03 §5.3.2 requires present; the corpus side is to be repaired (rev9). Coverage here is as the rev8 text states it."
+          ]
+        },
+        {
+          "id": "evi-root-present-pinned-count-absent-accepted",
+          "designation": "ADDITIVE",
+          "expect": "accepted; NOT malformed. pinned_count derives to 1 (entries with pinned: true), which is nonzero, so a non-null root is not a root_present_with_zero_pinned violation",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.3-a-counts",
+              "coverage": "partial",
+              "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "accepted; pinned_count derives to 1 (Finding 43)"
+            },
+            {
+              "requirement": "EP-4.1.2-empty-root-null",
+              "coverage": "partial",
+              "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "a non-null root is consistent with derived pinned_count 1"
+            }
+          ],
+          "external_requirements": [],
+          "notes": [
+            "the external cold-checker run (babyblueviper1, 2026-09-29) disagrees on this vector: it omits snippet_sha256 on an unpinned entry, which -03 §5.3.2 requires present; the corpus side is to be repaired (rev9). Coverage here is as the rev8 text states it."
+          ]
+        },
+        {
+          "id": "evi-resolve-all-counts-absent-accepted",
+          "designation": "RESOLUTION",
+          "expect": "step resolves on the derived values (source_count=2, pinned_count=2, fully_pinned=true); MUST NOT halt for want of declared count members",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.3-a-counts",
+              "coverage": "partial",
+              "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "step resolves on derived values; MUST NOT halt for want of declared counts (Finding 44)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-root-mismatch-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed",
+          "condition": "root_not_recomputable_from_sources",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.3-b-root-recompute",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition root_not_recomputable_from_sources"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-empty-root-null",
+          "designation": "EMPTY",
+          "expect": "evidence_root null; receipt well-formed",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-empty-root-null",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "evidence_root null over an empty pinned set; receipt well-formed"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-absent-unknown",
+          "designation": "ADDITIVE",
+          "expect": "unknown; MUST NOT halt",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.3-d-absent-unknown",
+              "coverage": "partial",
+              "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "no evidence_set -> unknown; MUST NOT halt"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-partial-resolves-unknown",
+          "designation": "COMPLETENESS",
+          "expect": "step resolves unknown; must_not: [\"valid\"] on the offline-recompute claim",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1-fully_pinned-stated",
+              "coverage": "partial",
+              "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "declared partial set"
+            },
+            {
+              "requirement": "EP-4.3-c-content-unknown",
+              "coverage": "partial",
+              "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "step resolves unknown; must_not valid on the offline-recompute claim"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-declared-partial-is-not-invalid",
+          "designation": "COMPLETENESS",
+          "expect": "receipt core-valid; NOT malformed; MUST NOT halt",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1-fully_pinned-stated",
+              "coverage": "partial",
+              "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "receipt core-valid; NOT malformed; MUST NOT halt"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-content-mismatch-unknown",
+          "designation": "UNKNOWN",
+          "expect": "unknown; MUST NOT halt; per-item reason content_differs (MUST per rev 5 Finding 17)",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.3-c-content-unknown",
+              "coverage": "partial",
+              "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "unknown; per-item reason content_differs"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-content-not-held-unknown",
+          "designation": "UNKNOWN",
+          "expect": "unknown; per-item reason content_not_held (MUST per rev 5 Finding 17)",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.3-c-content-unknown",
+              "coverage": "partial",
+              "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "unknown; per-item reason content_not_held"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-unpinned-item-reason-content-not-held",
+          "designation": "UNKNOWN",
+          "expect": "unknown; per-item reason content_not_held on the UNPINNED entry itself (Finding 45), trivially true by construction and MUST be present in item_reasons rather than omitted for being unpinned",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.3-c-content-unknown",
+              "coverage": "partial",
+              "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "per-item reason content_not_held on the unpinned entry itself (Finding 45)"
+            }
+          ],
+          "external_requirements": [],
+          "notes": [
+            "the external cold-checker run (babyblueviper1, 2026-09-29) disagrees on this vector: it omits snippet_sha256 on an unpinned entry, which -03 §5.3.2 requires present; the corpus side is to be repaired (rev9). Coverage here is as the rev8 text states it."
+          ]
+        },
+        {
+          "id": "evi-step-resolves-affirmatively",
+          "designation": "RESOLUTION",
+          "expect": "step resolves `resolved` (rev 6 Finding 29): not `unknown`, not a halt",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.3-resolved-token",
+              "coverage": "partial",
+              "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "step resolves `resolved`, not unknown, not a halt (Finding 29)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-unpinned-members-absent-accepted",
+          "designation": "ADDITIVE",
+          "expect": "accepted; an omitted member is equivalent to an explicit null on an unpinned entry (rev 6 Finding 30). Not root-bearing: see rev 7 Finding 33b.",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.1-content_kind",
+              "coverage": "partial",
+              "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "omitted member equivalent to explicit null on an unpinned entry (Finding 30)"
+            }
+          ],
+          "external_requirements": [],
+          "notes": [
+            "the external cold-checker run (babyblueviper1, 2026-09-29) disagrees on this vector: it omits snippet_sha256 on an unpinned entry, which -03 §5.3.2 requires present; the corpus side is to be repaired (rev9). Coverage here is as the rev8 text states it."
+          ]
+        },
+        {
+          "id": "evi-retrieved-at-noncanonical-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed; reported condition equals retrieved_at_not_canonical_form",
+          "condition": "retrieved_at_not_canonical_form",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-retrieved_at-form",
+              "coverage": "partial",
+              "checker": "fixtures/evidence-pinning-fixture-generator-rev8.py (the emitter's own validation; same author, not independent); external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "condition retrieved_at_not_canonical_form"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-duplicate-unpinned-entries-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed; reported condition equals duplicate_bound_tuple. The domain of the entry-identity rule is stated normatively in the specification and is deliberately not restated here.",
+          "condition": "duplicate_bound_tuple",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-no-identical-entries",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "identity rule halts under the whole-of-sources reading and not under the pinned-only reading (Finding 35)"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-unpinned-retrieved-at-noncanonical-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed; reported condition equals retrieved_at_not_canonical_form. Which entries the form rule ranges over is stated normatively in the specification and is deliberately not restated here.",
+          "condition": "retrieved_at_not_canonical_form",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1.2-retrieved_at-form",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "a non-canonical value on an unpinned entry is found; none on a pinned entry (Finding 37)"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-set-retrieved-at-equals-unpinned-value",
+          "designation": "SET SCOPE",
+          "expect": "accepted; receipt well-formed; the step MUST NOT halt on the set-level retrieved_at. The domain of that comparison is stated normatively in the specification and is deliberately not restated here.",
+          "root_bearing": true,
+          "requirements": [
+            {
+              "requirement": "EP-4.1-set-retrieved_at-least",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "set retrieved_at equals the least over all entries and not the least over pinned entries (Finding 36)"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "evi-set-retrieved-at-above-unpinned-value-rejects",
+          "designation": "MALFORMED",
+          "expect": "halt, malformed; reported condition equals set_retrieved_at_not_bytewise_least. The domain of the comparison is stated normatively in the specification and is deliberately not restated here.",
+          "condition": "set_retrieved_at_not_bytewise_least",
+          "root_bearing": false,
+          "requirements": [
+            {
+              "requirement": "EP-4.1-set-retrieved_at-least",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "set retrieved_at above an unpinned entry's value halts (Finding 36)"
+            },
+            {
+              "requirement": "EP-4.3-condition-identifiers",
+              "coverage": "covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
+              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+            }
+          ],
+          "external_requirements": []
+        }
+      ],
+      "vector_count": 44
+    },
+    "rule2": {
+      "manifest": "conformance/vectors-rule2.json",
+      "manifest_sha256": "b8929adbdfde18855fd1d0e9743e26454421e8e25144f1f0922f1d339f1bd7ef",
+      "normative": false,
+      "label": "NOT NORMATIVE until reviewed and published (the manifest's own $comment)",
+      "requirement_documents": [
+        "MAP",
+        "D01"
+      ],
+      "external_documents": [
+        "EXT-service-integrity-D1"
+      ],
+      "checkers": [
+        "conformance/check.mjs"
+      ],
+      "vectors": [
+        {
+          "id": "rule2-accept",
+          "designation": "RULE 6 PAIR / ACCEPT",
+          "input": {
+            "v_verdict": "supported",
+            "v_adversarial_result": "not_checked",
+            "v_confidence": 0.93
+          },
+          "expect": {
+            "v_recommendation": "un_probed_not_cleared",
+            "verdict": "halt"
+          },
+          "expect_must_not_equal": null,
+          "requirements": [
+            {
+              "requirement": "MAP-rule-2",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "derivation yields un_probed_not_cleared"
+            },
+            {
+              "requirement": "MAP-gate_map",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "verdict halt"
+            },
+            {
+              "requirement": "D01-5.1-row-2",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "row 2 reproduced"
+            },
+            {
+              "requirement": "D01-5.2-uncertainty-halts",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "not_checked under a supported verdict halts"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "rule2-reject-act",
+          "designation": "RULE 6 PAIR / REJECT",
+          "input": {
+            "v_verdict": "supported",
+            "v_adversarial_result": "not_checked",
+            "v_confidence": 0.93
+          },
+          "expect": null,
+          "expect_must_not_equal": {
+            "verdict": "act"
+          },
+          "requirements": [
+            {
+              "requirement": "MAP-gate_map",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "verdict MUST NOT be act"
+            },
+            {
+              "requirement": "D01-5.1-row-2",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "row 2 gate"
+            },
+            {
+              "requirement": "D01-5.2-uncertainty-halts",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "un-probed state does not clear"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "rule2-reject-collapse",
+          "designation": "REGRESSION GUARD / H4",
+          "input": {
+            "v_verdict": "supported",
+            "v_adversarial_result": "not_checked",
+            "v_confidence": 0.93
+          },
+          "expect": null,
+          "expect_must_not_equal": {
+            "v_recommendation": "unverifiable"
+          },
+          "requirements": [
+            {
+              "requirement": "MAP-rule-2",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "recommendation MUST NOT collapse to unverifiable"
+            },
+            {
+              "requirement": "D01-5.1-row-2",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "row 2 is distinct from row 6"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "rule1-confident",
+          "designation": "CONTROL",
+          "input": {
+            "v_verdict": "supported",
+            "v_adversarial_result": "resilient",
+            "v_confidence": 0.93
+          },
+          "expect": {
+            "v_recommendation": "confident_supported",
+            "verdict": "act"
+          },
+          "expect_must_not_equal": null,
+          "requirements": [
+            {
+              "requirement": "MAP-rule-1",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "confident_supported"
+            },
+            {
+              "requirement": "MAP-gate_map",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "the only path to act"
+            },
+            {
+              "requirement": "D01-5.1-row-1",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "row 1 reproduced"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "rule4-weak",
+          "designation": "CONTROL",
+          "input": {
+            "v_verdict": "supported",
+            "v_adversarial_result": "not_checked",
+            "v_confidence": 0.5
+          },
+          "expect": {
+            "v_recommendation": "weak_supported",
+            "verdict": "halt"
+          },
+          "expect_must_not_equal": null,
+          "requirements": [
+            {
+              "requirement": "MAP-rule-4",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "weak_supported below threshold"
+            },
+            {
+              "requirement": "MAP-threshold",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "0.5 < 0.7"
+            },
+            {
+              "requirement": "D01-5.1-row-4",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "row 4 reproduced"
+            },
+            {
+              "requirement": "D01-5.2-threshold-from-mapping",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "the runner refuses a manifest threshold that differs from the mapping's"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "rule3-vulnerable",
+          "designation": "CONTROL",
+          "input": {
+            "v_verdict": "supported",
+            "v_adversarial_result": "vulnerable",
+            "v_confidence": 0.93
+          },
+          "expect": {
+            "v_recommendation": "vulnerable_supported",
+            "verdict": "halt"
+          },
+          "expect_must_not_equal": null,
+          "requirements": [
+            {
+              "requirement": "MAP-rule-3",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "vulnerable_supported"
+            },
+            {
+              "requirement": "D01-5.1-row-3",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "row 3 reproduced"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "rule6-unverifiable",
+          "designation": "CONTROL",
+          "input": {
+            "v_verdict": "unverifiable",
+            "v_adversarial_result": "resilient",
+            "v_confidence": 0.93
+          },
+          "expect": {
+            "v_recommendation": "unverifiable",
+            "verdict": "halt"
+          },
+          "expect_must_not_equal": null,
+          "requirements": [
+            {
+              "requirement": "MAP-rule-6",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "unverifiable"
+            },
+            {
+              "requirement": "D01-5.1-row-6",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "row 6 reproduced"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "rule5-refuted",
+          "designation": "CONTROL",
+          "input": {
+            "v_verdict": "refuted",
+            "v_adversarial_result": "not_checked",
+            "v_confidence": 0.1
+          },
+          "expect": {
+            "v_recommendation": "refuted",
+            "verdict": "halt"
+          },
+          "expect_must_not_equal": null,
+          "requirements": [
+            {
+              "requirement": "MAP-rule-5",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "refuted outranks every adversarial state"
+            },
+            {
+              "requirement": "D01-5.1-row-5",
+              "coverage": "covered",
+              "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
+              "assertion": "row 5 reproduced"
+            }
+          ],
+          "external_requirements": []
+        },
+        {
+          "id": "d1-no-receipt",
+          "designation": "SERVICE INTEGRITY / NOT A GATE VECTOR",
+          "input": {
+            "members_evaluated": 0
+          },
+          "expect": {
+            "receipt_issued": false,
+            "http_status": 503,
+            "status": "not_evaluated"
+          },
+          "expect_must_not_equal": null,
+          "requirements": [],
+          "external_requirements": [
+            {
+              "requirement": "EXT-service-integrity-D1",
+              "assertion": "not executed: check.mjs skips inputs carrying members_evaluated (service-level, not a derivation)"
+            }
+          ],
+          "notes": [
+            "declared, not run: no published checker executes this vector"
+          ]
+        }
+      ],
+      "vector_count": 9
+    },
+    "leaf-screen-halt": {
+      "manifest": "examples/conformance/delegation-chain-ref/leaf-screen-halt/vectors.json",
+      "manifest_sha256": "8a76fd63cc8971837ea00a72faa82453d834f5a5111b1627e8ee106f70d67d68",
+      "normative": true,
+      "requirement_documents": [],
+      "external_documents": [
+        "EXT-delegation-chain-ref-v1"
+      ],
+      "checkers": [
+        "examples/conformance/delegation-chain-ref/leaf-screen-halt/verify.py"
+      ],
+      "vectors": [
+        {
+          "id": "leaf-screen-halt-001",
+          "expected": "FAIL",
+          "failure_mode": "scope_mismatch_at_leaf",
+          "status": "deferred",
+          "reason": "the requirement text is third-party: delegation-chain-ref-v1 in giskard09/argentum-core (docs/spec/delegation-chain-ref.md). The leaf-screen-halt README cites it unpinned; the v0.4 manifest pins commit 16e140a. It is not one of the in-scope documents for this mapping.",
+          "assertion_evidence": "examples/conformance/delegation-chain-ref/leaf-screen-halt/verify.py executes continuity, root anchoring, leaf anchoring, leaf scope match and monotonic narrowing; the vector rejects on scope_mismatch_at_leaf",
+          "external_requirements": [
+            {
+              "requirement": "EXT-delegation-chain-ref-v1",
+              "assertion": "scope_mismatch_at_leaf"
+            }
+          ]
+        }
+      ],
+      "vector_count": 1
+    }
+  },
+  "totals": {
+    "friday_priority": 58,
+    "also_accounted": 10,
+    "mapped_or_deferred": 68
+  },
+  "reverse_view": {
+    "D01": {
+      "summary": {
+        "requirements": 52,
+        "covered": 12,
+        "partial": 4,
+        "not_covered": 36,
+        "not_covered_list": [
+          "D01-3.2-env-ordering",
+          "D01-4.1-typ",
+          "D01-4.2-v_verdict",
+          "D01-4.2-v_confidence",
+          "D01-4.2-v_adversarial_result",
+          "D01-4.2-v_recommendation",
+          "D01-4.2-v_gate",
+          "D01-4.2-v_gate_mapping",
+          "D01-4.2-v_gate_mapping_hash",
+          "D01-4.2-jwt-claims",
+          "D01-4.3-2-mapping-digest",
+          "D01-4.3-3-recompute-recommendation",
+          "D01-4.3-4-confirm-recommendation",
+          "D01-4.3-5-compute-gate",
+          "D01-4.3-6-confirm-gate",
+          "D01-4.3-7-time",
+          "D01-4.4-v_claim",
+          "D01-4.5-mapping-hash-present",
+          "D01-4.6-old-mapping-verifiable",
+          "D01-4.6-mapping-immutable",
+          "D01-5.1-table-shape",
+          "D01-5.1-row-7",
+          "D01-5.2-no-foreign-threshold",
+          "D01-6.2-stale-signature",
+          "D01-6.2-stale-calibration",
+          "D01-6.2-stale-evidence",
+          "D01-7.1-publish-anchors",
+          "D01-7.1-harness",
+          "D01-7.2-cadence",
+          "D01-9.1-ordering-holds",
+          "D01-9.2-key-rotation",
+          "D01-9.2-replay",
+          "D01-9.2-confidence-inflation",
+          "D01-9.2-downgrade",
+          "D01-9.2-mapping-tampering",
+          "D01-10-iana"
+        ]
+      },
+      "requirements": {
+        "D01-3.2-conjunction": {
+          "text": "§3.2: multiple verification.* constraints combine with AND; all MUST resolve to act for the action to proceed",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-001",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-002",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-003",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-004",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-005",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-006",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-007",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-r03",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.4-composed",
+              "vector": "comp-008",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "D01-3.2-env-ordering": {
+          "text": "§3.2: environment.* constraints MUST short-circuit before verification.* constraints",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.1-jws": {
+          "text": "§4.1: receipts MUST be JWS; a relying party MUST accept compact and JSON (flattened) serializations",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-001",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-002",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-003",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-004",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-005",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-006",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-007",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.4-composed",
+              "vector": "comp-008",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "D01-4.1-alg": {
+          "text": "§4.1: a conforming implementation MUST accept both EdDSA and ES256",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-001",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-002",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-003",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-004",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-005",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-006",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-007",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.4-composed",
+              "vector": "comp-008",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "D01-4.1-kid": {
+          "text": "§4.1: kid MUST resolve to a key in the issuer's published JWKS",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-001",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-002",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-003",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-004",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-005",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-006",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-007",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.4-composed",
+              "vector": "comp-008",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "D01-4.1-typ": {
+          "text": "§4.1: typ is verification-receipt+jws",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.2-v_verdict": {
+          "text": "§4.2: v_verdict REQUIRED, one of supported | refuted | unverifiable | unknown",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.2-v_confidence": {
+          "text": "§4.2: v_confidence REQUIRED, float in [0, 1]",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.2-v_adversarial_result": {
+          "text": "§4.2: v_adversarial_result REQUIRED, one of resilient | vulnerable | not_checked",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.2-v_recommendation": {
+          "text": "§4.2: v_recommendation REQUIRED, derived deterministically from the canonical input under the named mapping",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.2-v_gate": {
+          "text": "§4.2: v_gate REQUIRED, act | halt, derived from v_recommendation under the named mapping",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.2-v_gate_mapping": {
+          "text": "§4.2: v_gate_mapping REQUIRED; mapping documents are immutable after publication",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.2-v_gate_mapping_hash": {
+          "text": "§4.2: v_gate_mapping_hash REQUIRED; absence is a malformed-receipt condition and MUST halt",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.2-jwt-claims": {
+          "text": "§4.2: iss, iat, exp REQUIRED; sub RECOMMENDED; nbf OPTIONAL",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.3-sequence": {
+          "text": "§4.3: a relying party MUST execute the eight-step sequence and treat any failure as malformed with gate decision halt",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-001",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-002",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-003",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-004",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-005",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-006",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-007",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.4-composed",
+              "vector": "comp-008",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "D01-4.3-1-signature": {
+          "text": "§4.3 step 1: verify the JWS signature against the issuer's published JWKS",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-001",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-002",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-003",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-004",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-005",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-006",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-007",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-r01",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.4-composed",
+              "vector": "comp-008",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "D01-4.3-2-mapping-digest": {
+          "text": "§4.3 step 2: fetch the named mapping document; its SHA-256 MUST match v_gate_mapping_hash; receipts without the hash are malformed",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.3-3-recompute-recommendation": {
+          "text": "§4.3 step 3: recompute candidate_recommendation from (v_verdict, v_confidence, v_adversarial_result) using the mapping's rules and threshold",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.3-4-confirm-recommendation": {
+          "text": "§4.3 step 4: confirm candidate_recommendation == v_recommendation",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.3-5-compute-gate": {
+          "text": "§4.3 step 5: compute candidate_gate = mapping(v_recommendation)",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.3-6-confirm-gate": {
+          "text": "§4.3 step 6: confirm candidate_gate == v_gate",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.3-7-time": {
+          "text": "§4.3 step 7: verify exp/nbf against current time subject to clock tolerance",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.3-8-mismatch-halts": {
+          "text": "§4.3 step 8: any mismatch -> malformed; gate decision = halt",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-r01",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-r03",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "D01-4.4-v_claim": {
+          "text": "§4.4: the verified claim MUST be bound via v_claim (text, or hash REQUIRED when text is omitted)",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.5-mapping-hash-present": {
+          "text": "§4.5: v_gate_mapping_hash MUST be present in all conforming receipts",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.6-old-mapping-verifiable": {
+          "text": "§4.6: a receipt issued under an older mapping MUST remain verifiable as correct under that mapping",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-4.6-mapping-immutable": {
+          "text": "§4.6: publishers MUST treat published mappings as immutable; new rules ship under new identifiers",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-5.1-table-shape": {
+          "text": "§5.1: the binary act/halt shape derived from the canonical recommendation MUST be preserved",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-5.1-row-1": {
+          "text": "§5.1 Table 2 row 1: supported, >= threshold, resilient -> confident_supported -> act",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule1-confident",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "D01-5.1-row-2": {
+          "text": "§5.1 Table 2 row 2: supported, >= threshold, not_checked -> un_probed_not_cleared -> halt",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule2-accept",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "rule2",
+              "vector": "rule2-reject-act",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "rule2",
+              "vector": "rule2-reject-collapse",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "D01-5.1-row-3": {
+          "text": "§5.1 Table 2 row 3: supported, any, vulnerable -> vulnerable_supported -> halt",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule3-vulnerable",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "D01-5.1-row-4": {
+          "text": "§5.1 Table 2 row 4: supported, < threshold, resilient or not_checked -> weak_supported -> halt",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule4-weak",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "D01-5.1-row-5": {
+          "text": "§5.1 Table 2 row 5: refuted -> refuted -> halt",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule5-refuted",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "D01-5.1-row-6": {
+          "text": "§5.1 Table 2 row 6: unverifiable or unknown -> unverifiable -> halt",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule6-unverifiable",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "D01-5.1-row-7": {
+          "text": "§5.1 Table 2 row 7: error condition -> error -> halt",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-5.2-threshold-from-mapping": {
+          "text": "§5.2: the threshold is recovered from the named mapping; two receipts under one mapping ID MUST gate against the same threshold",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule4-weak",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "D01-5.2-uncertainty-halts": {
+          "text": "§5.2: un-probed adversarial state is not equivalent to resilient; uncertainty MUST halt (un_probed_not_cleared)",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule2-accept",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "rule2",
+              "vector": "rule2-reject-act",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "D01-5.2-no-foreign-threshold": {
+          "text": "§5.2: relying parties MUST NOT treat a receipt as conformant under a mapping with a different threshold than that mapping states",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-5.3-fail-closed": {
+          "text": "§5.3: missing, malformed, expired, signature-invalid or unresolvable-mapping receipts MUST be treated as halt; implementations MUST NOT default to act",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-r01",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "D01-6.2-stale-signature": {
+          "text": "§6.2: a stale signature makes the receipt invalid; relying party MUST treat as halt",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-6.2-stale-calibration": {
+          "text": "§6.2: stale calibration SHOULD be re-evaluated; issuers SHOULD publish recalibration cadence",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-6.2-stale-evidence": {
+          "text": "§6.2: stale evidence SHOULD be re-evaluated and MUST NOT be honored as a gate signal for new actions",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-7.1-publish-anchors": {
+          "text": "§7.1: verifier issuers MUST publish calibration anchors (the listed items)",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-7.1-harness": {
+          "text": "§7.1: verifier issuers SHOULD publish a reference reproduction harness under a permissive license",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-7.2-cadence": {
+          "text": "§7.2: issuers SHOULD publish a recalibration cadence; v_calibration.valid_until SHOULD reflect it",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-9.1-ordering-holds": {
+          "text": "§9.1: the §3.2 ordering MUST hold when composed with environment.*",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-9.2-key-rotation": {
+          "text": "§9.2: issuers MUST rotate JWKS keys on a published cadence; RPs MUST honor key revocation lists",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-9.2-replay": {
+          "text": "§9.2: RPs MUST verify iat and exp against current time",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-9.2-confidence-inflation": {
+          "text": "§9.2: RPs SHOULD monitor issuer calibration drift",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-9.2-downgrade": {
+          "text": "§9.2: a relying party MUST NOT accept a v0.3-spec receipt against a v0.4-spec gate",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-9.2-mapping-tampering": {
+          "text": "§9.2: receipts MUST bind to a content-addressed mapping; mapping documents MUST be hosted with a stable digest",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "D01-10-iana": {
+          "text": "§10: IANA considerations (registration statement)",
+          "coverage": "not covered",
+          "vectors": []
+        }
+      },
+      "note": "rule2 vectors count here but are labelled NOT NORMATIVE in their manifest; a reader wanting the normative-only view removes them"
+    },
+    "RMT": {
+      "summary": {
+        "requirements": 2,
+        "covered": 1,
+        "partial": 1,
+        "not_covered": 0,
+        "not_covered_list": []
+      },
+      "requirements": {
+        "RMT-action-ref": {
+          "text": "action_ref is computed per draft-giskard-aeoess-action-ref over agent_id, action_type, scope, timestamp (RFC 3339 UTC, exactly 3 fractional digits)",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-005",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-006",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-007",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-r04",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "v0.4-composed",
+              "vector": "comp-008",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "RMT-trail-sibling": {
+          "text": "a returned mycelium_trail_id can be carried at the envelope level as a sibling pointer to v_gate (the composed-envelope spec it defers to is described as forthcoming)",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-004",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "v0.3-composed",
+              "vector": "comp-r02",
+              "coverage": "partial"
+            }
+          ]
+        }
+      }
+    },
+    "MAP": {
+      "summary": {
+        "requirements": 9,
+        "covered": 8,
+        "partial": 0,
+        "not_covered": 1,
+        "not_covered_list": [
+          "MAP-rule-7"
+        ]
+      },
+      "requirements": {
+        "MAP-rule-1": {
+          "text": "rule 1: supported, >= threshold, resilient -> confident_supported",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule1-confident",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "MAP-rule-2": {
+          "text": "rule 2: supported, >= threshold, not_checked -> un_probed_not_cleared",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule2-accept",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "rule2",
+              "vector": "rule2-reject-collapse",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "MAP-rule-3": {
+          "text": "rule 3: supported, any, vulnerable -> vulnerable_supported",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule3-vulnerable",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "MAP-rule-4": {
+          "text": "rule 4: supported, < threshold, resilient or not_checked -> weak_supported",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule4-weak",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "MAP-rule-5": {
+          "text": "rule 5: refuted -> refuted",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule5-refuted",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "MAP-rule-6": {
+          "text": "rule 6: unverifiable or unknown -> unverifiable",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule6-unverifiable",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "MAP-rule-7": {
+          "text": "rule 7: error condition -> error",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "MAP-gate_map": {
+          "text": "gate_map: only confident_supported -> act; every other recommendation -> halt",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule2-accept",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "rule2",
+              "vector": "rule2-reject-act",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "rule2",
+              "vector": "rule1-confident",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "MAP-threshold": {
+          "text": "threshold: v_confidence >= 0.7; the threshold lives in the mapping, not in receipts",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "rule2",
+              "vector": "rule4-weak",
+              "coverage": "covered"
+            }
+          ]
+        }
+      },
+      "note": "exercised only by the NOT NORMATIVE rule2 set"
+    },
+    "EP": {
+      "summary": {
+        "requirements": 28,
+        "covered": 11,
+        "partial": 14,
+        "not_covered": 3,
+        "not_covered_list": [
+          "EP-4.1-members",
+          "EP-4.1.2-domain-separation",
+          "EP-5-non-establishment"
+        ]
+      },
+      "requirements": {
+        "EP-4.1-members": {
+          "text": "review draft §4.1: an evidence_set, when present, MUST be an object with evidence_set_version, retrieved_at, source_count, pinned_count (<= source_count), fully_pinned, evidence_root, sources",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "EP-4.1-fully_pinned-stated": {
+          "text": "review draft §4.1: fully_pinned is stated, not derived; an issuer MUST NOT omit it when some items are unpinned; partial pinning is an honest state",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-partial-resolves-unknown",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-declared-partial-is-not-invalid",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.1.1-entry-members": {
+          "text": "review draft §4.1.1 as amended (rev2 §3): each sources entry carries url, snippet_sha256 (or null), retrieved_at, pinned, and content_kind when pinned",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-snippet-sha256-absent-when-pinned-rejects",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.1.1-digest-as-received": {
+          "text": "review draft §4.1.1: snippet_sha256 is computed over the content exactly as received, UTF-8, no normalization",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-snippet-change-changes-root",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "EP-4.1.1-url-bytes": {
+          "text": "rev2 §3: the url carried in an entry MUST be the URI bytes used for retrieval, without normalization",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-url-normalization-changes-root",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "EP-4.1.1-possession": {
+          "text": "rev2 §3 (possession rule): an issuer MUST pin every item for which it received content bytes; every pinned: false entry MUST carry an unpinned_reason from the stated domain; an item outside that domain or without a reason is malformed",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-unpinned-reason-outside-domain-rejects",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-unpinned-without-reason-rejects",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.1.1-content_kind": {
+          "text": "rev2 §3 / rev6 Finding 30: content_kind MUST be present and one of the defined values when pinned; on an unpinned entry it MUST be absent or null (equivalent)",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-content-kind-absent-when-pinned-rejects",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-unpinned-members-absent-accepted",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.1.1-full_resource": {
+          "text": "rev4 Finding 19 / rev8 Finding 42: a full_resource entry does not carry resource_sha256 (the rule ranges over every entry)",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-resource-sha256-with-full-resource-rejects",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-full-resource-digest-on-unpinned-rejects",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.1.1-pinned-boolean": {
+          "text": "rev8 Finding 40: pinned is REQUIRED on every entry and MUST be exactly true or false; anything else halts",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-full-resource-digest-on-unpinned-rejects",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-pinned-absent-rejects",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-pinned-not-boolean-rejects",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.1.2-leaf": {
+          "text": "review draft §4.1.2 as amended (rev2 Finding 1, rev4 Finding 15a, prefix ao-evidence-leaf-v2): the leaf preimage binds url, snippet_sha256, content_kind and retrieved_at with 0x00 separators",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-leaf-member-encoding",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-snippet-change-changes-root",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-url-normalization-changes-root",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-leaf-binds-content-kind",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-leaf-binds-retrieved-at",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "EP-4.1.2-node": {
+          "text": "review draft §4.1.2 / rev6 Finding 27: interior node = SHA-256(prefix || 0x00 || left || 0x00 || right) over the raw 32-octet children",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-node-child-encoding",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "EP-4.1.2-odd-promotion": {
+          "text": "review draft §4.1.2 / rev6 Finding 28: an odd final entry is promoted unchanged, never duplicated; termination stated",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-root-odd-promotion",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "EP-4.1.2-canonical-order": {
+          "text": "review draft §4.1.2 as amended (rev4 Finding 15c): leaves sort ascending by the four-term key url, snippet_sha256, content_kind, retrieved_at, bytewise over UTF-8",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-root-order-independent",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-duplicate-url-distinct-digest",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-order-tiebreak-content-kind",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-order-tiebreak-retrieved-at",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "EP-4.1.2-domain-separation": {
+          "text": "review draft §4.1.2: distinct leaf and node prefixes; a leaf hash can never be reinterpreted as a node",
+          "coverage": "not covered",
+          "vectors": []
+        },
+        "EP-4.1.2-empty-root-null": {
+          "text": "review draft §4.1.2 / rev8 Finding 43: when pinned_count is zero evidence_root MUST be null; a non-null root with zero pinned entries, or a null root with pinned entries, is malformed",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-root-with-zero-pinned-rejects",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-nonzero-pinned-null-root-rejects",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-root-present-pinned-count-absent-accepted",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-empty-root-null",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "EP-4.1.2-no-identical-entries": {
+          "text": "rev5 Finding 24a / rev8 Finding 35: two entries MUST NOT be identical across the bound members; the identity rule ranges over every entry, pinned or unpinned (duplicate_bound_tuple)",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-duplicate-bound-tuple-rejects",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-duplicate-unpinned-entries-rejects",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "EP-4.1.2-retrieved_at-form": {
+          "text": "rev6 Finding 32 / rev8 Finding 37: retrieved_at MUST be RFC 3339 UTC with Z and exactly three fractional digits; the rule ranges over every entry",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-retrieved-at-noncanonical-rejects",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-unpinned-retrieved-at-noncanonical-rejects",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "EP-4.1-set-retrieved_at-least": {
+          "text": "rev8 Finding 36: the set-level retrieved_at MUST equal the bytewise-least retrieved_at among all entries",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-set-retrieved-at-not-earliest-rejects",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-set-retrieved-at-equals-unpinned-value",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-set-retrieved-at-above-unpinned-value-rejects",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "EP-4.3-a-counts": {
+          "text": "review draft §4.3 (a) as amended (rev5 24d, rev8 Findings 41, 44): pinned_count, source_count and fully_pinned MUST be consistent with the entries; absent declared counts derive from the entries and MUST NOT halt for want of them",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-source-count-mismatch-rejects",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-count-inconsistency-rejects",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-fully-pinned-fallback-derives-from-sources-accepted",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-root-present-pinned-count-absent-accepted",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-resolve-all-counts-absent-accepted",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.3-a-snippet-required": {
+          "text": "rev8 Finding 46: step (a) MUST halt on a pinned entry whose snippet_sha256 is absent or null, and MUST NOT let it reach leaf or root construction",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-snippet-sha256-absent-when-pinned-rejects",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.3-b-root-recompute": {
+          "text": "review draft §4.3 (b): a non-null evidence_root is recomputed from sources; a mismatch is malformed and halts",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-root-mismatch-rejects",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.3-c-content-unknown": {
+          "text": "review draft §4.3 (c) as amended (rev4 Finding 17, rev8 Finding 45): a content mismatch, or content not held, resolves unknown for that item with a per-item reason (content_differs | content_not_held) and MUST NOT halt",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-partial-resolves-unknown",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-content-mismatch-unknown",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-content-not-held-unknown",
+              "coverage": "partial"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-unpinned-item-reason-content-not-held",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.3-d-absent-unknown": {
+          "text": "review draft §4.3 (d): a receipt carrying no evidence_set resolves unknown for the step and MUST NOT fail it",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-absent-unknown",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.3-resolved-token": {
+          "text": "rev6 Finding 29: the affirmative step resolution is the token resolved; an implementation MUST emit resolved or unknown and no other value",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-step-resolves-affirmatively",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.3-diagnostic-naming": {
+          "text": "rev6 Finding 31: when more than one condition is violated the implementation halts on the first in section order and names it; a vector injecting more than one condition MUST state which",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-content-kind-absent-when-pinned-rejects",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.3-empty-set": {
+          "text": "rev4 Finding 20: an evidence_set whose sources names no entries is malformed (evidence_set_names_no_sources)",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-empty-set-rejects",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.3-condition-identifiers": {
+          "text": "rev7 Finding 33 / rev8 Finding 38: MALFORMED outcomes are reported with a condition identifier from the registry; superseded identifiers are published as such and fail the build",
+          "coverage": "covered",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-set-retrieved-at-not-earliest-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-content-kind-absent-when-pinned-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-resource-sha256-with-full-resource-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-full-resource-digest-on-unpinned-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-pinned-absent-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-pinned-not-boolean-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-snippet-sha256-absent-when-pinned-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-empty-set-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-duplicate-bound-tuple-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-unpinned-reason-outside-domain-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-unpinned-without-reason-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-source-count-mismatch-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-count-inconsistency-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-root-with-zero-pinned-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-nonzero-pinned-null-root-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-root-mismatch-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-retrieved-at-noncanonical-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-duplicate-unpinned-entries-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-unpinned-retrieved-at-noncanonical-rejects",
+              "coverage": "covered"
+            },
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-set-retrieved-at-above-unpinned-value-rejects",
+              "coverage": "covered"
+            }
+          ]
+        },
+        "EP-5-non-establishment": {
+          "text": "review draft §5: a pinned evidence set establishes nothing about truth, sufficiency, independence or completeness of retrieval; implementations SHOULD NOT present it as if it did",
+          "coverage": "not covered",
+          "vectors": []
+        }
+      },
+      "note": "scoped to the evidence-pinning section only, as the fixture header pins it"
+    }
+  }
+}
