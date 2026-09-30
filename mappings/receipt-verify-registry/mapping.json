@@ -16,7 +16,7 @@
     "date": "2026-09-30",
     "for": "Michael Msebenzi (headlessoracle), receipt-verify registry"
   },
-  "coverage_rule": "Coverage is recorded per vector and requirement only where an assertion is actually executed. covered: executed by a checker published with the corpus against the shipped file. partial: declared in the manifest and executed only by the emitter that produced it or by an external run, or the checker exercises part of the requirement. not covered: no executed assertion. The reverse view takes the best coverage any vector gives a requirement.",
+  "coverage_rule": "Coverage is recorded per vector and requirement only where an assertion is actually executed. covered: executed by a checker published with the corpus against the shipped file. partial: declared in the manifest and executed only by the emitter that produced it or by an external run, or the checker exercises part of the requirement. not covered: no executed assertion. The reverse view takes the best coverage any vector gives a requirement within the corpora it names. The rev8 cross-check is, in its own README's words, not a conformance verifier: it checks roots, census and condition identifiers, so it can give 'covered' only to root-construction rules and to the four rev8 discriminating vectors.",
   "not_counted": {
     "v0.4-branch-vectors": "7 vectors on the unmerged v0.4 branch: not in the snapshot; deferred until merged",
     "rev5-rev7-fixtures": "fixtures/evidence-pinning-fixtures-v2-rev5|6|7.json: superseded by rev8; not corpora",
@@ -75,13 +75,14 @@
         "D01-7.1-publish-anchors": "§7.1: verifier issuers MUST publish calibration anchors (the listed items)",
         "D01-7.1-harness": "§7.1: verifier issuers SHOULD publish a reference reproduction harness under a permissive license",
         "D01-7.2-cadence": "§7.2: issuers SHOULD publish a recalibration cadence; v_calibration.valid_until SHOULD reflect it",
+        "D01-7.2-surface-stale": "§7.2: relying parties consuming receipts with stale calibration SHOULD log and surface the staleness rather than silently accept",
         "D01-9.1-ordering-holds": "§9.1: the §3.2 ordering MUST hold when composed with environment.*",
-        "D01-9.2-key-rotation": "§9.2: issuers MUST rotate JWKS keys on a published cadence; RPs MUST honor key revocation lists",
+        "D01-9.2-key-rotation": "§9.2: issuers MUST rotate JWKS keys on a published cadence; RPs MUST honor key revocation lists where published",
         "D01-9.2-replay": "§9.2: RPs MUST verify iat and exp against current time",
-        "D01-9.2-confidence-inflation": "§9.2: RPs SHOULD monitor issuer calibration drift",
+        "D01-9.2-sample-harness": "§9.2 (confidence inflation): RPs SHOULD periodically sample receipts against the issuer's published harness",
         "D01-9.2-downgrade": "§9.2: a relying party MUST NOT accept a v0.3-spec receipt against a v0.4-spec gate",
         "D01-9.2-mapping-tampering": "§9.2: receipts MUST bind to a content-addressed mapping; mapping documents MUST be hosted with a stable digest",
-        "D01-10-iana": "§10: IANA considerations (registration statement)"
+        "D01-10-well-known-jwks": "§10: verification issuers using HTTPS SHOULD publish their JWKS at /.well-known/jwks.json per RFC 7517 §4.7 conventions"
       }
     },
     "RMT": {
@@ -157,7 +158,7 @@
         "EP-4.1-members": "review draft §4.1: an evidence_set, when present, MUST be an object with evidence_set_version, retrieved_at, source_count, pinned_count (<= source_count), fully_pinned, evidence_root, sources",
         "EP-4.1-fully_pinned-stated": "review draft §4.1: fully_pinned is stated, not derived; an issuer MUST NOT omit it when some items are unpinned; partial pinning is an honest state",
         "EP-4.1.1-entry-members": "review draft §4.1.1 as amended (rev2 §3): each sources entry carries url, snippet_sha256 (or null), retrieved_at, pinned, and content_kind when pinned",
-        "EP-4.1.1-digest-as-received": "review draft §4.1.1: snippet_sha256 is computed over the content exactly as received, UTF-8, no normalization",
+        "EP-4.1.1-digest-as-received": "review draft §4.1.1 as amended (rev4 Finding 16): snippet_sha256 is computed over the retrieved content exactly as received, the octet sequence as it arrived, with no transcoding, trimming, whitespace collapsing, case folding or Unicode normalization; there is no character-encoding step, the digest is over bytes, not text",
         "EP-4.1.1-url-bytes": "rev2 §3: the url carried in an entry MUST be the URI bytes used for retrieval, without normalization",
         "EP-4.1.1-possession": "rev2 §3 (possession rule): an issuer MUST pin every item for which it received content bytes; every pinned: false entry MUST carry an unpinned_reason from the stated domain; an item outside that domain or without a reason is malformed",
         "EP-4.1.1-content_kind": "rev2 §3 / rev6 Finding 30: content_kind MUST be present and one of the defined values when pinned; on an unpinned entry it MUST be absent or null (equivalent)",
@@ -169,14 +170,19 @@
         "EP-4.1.2-canonical-order": "review draft §4.1.2 as amended (rev4 Finding 15c): leaves sort ascending by the four-term key url, snippet_sha256, content_kind, retrieved_at, bytewise over UTF-8",
         "EP-4.1.2-domain-separation": "review draft §4.1.2: distinct leaf and node prefixes; a leaf hash can never be reinterpreted as a node",
         "EP-4.1.2-empty-root-null": "review draft §4.1.2 / rev8 Finding 43: when pinned_count is zero evidence_root MUST be null; a non-null root with zero pinned entries, or a null root with pinned entries, is malformed",
-        "EP-4.1.2-no-identical-entries": "rev5 Finding 24a / rev8 Finding 35: two entries MUST NOT be identical across the bound members; the identity rule ranges over every entry, pinned or unpinned (duplicate_bound_tuple)",
+        "EP-4.1.2-no-identical-entries": "rev5 Finding 24a as amended by rev8 Finding 35: two entries in sources are one retrieval recorded twice when they are identical in url and retrieved_at and, where both are pinned, also identical in snippet_sha256 and content_kind; the rule ranges over every entry, pinned and unpinned alike; malformed, gate decision halt (duplicate_bound_tuple)",
+        "EP-4.1.2-no-identical-entries-mixed-pair": "rev8 Finding 35, stated consequence: a pinned entry and an unpinned entry sharing url and retrieved_at are also one retrieval recorded twice and the set halts. rev8 records that no vector in that revision covers this mixed pair",
         "EP-4.1.2-retrieved_at-form": "rev6 Finding 32 / rev8 Finding 37: retrieved_at MUST be RFC 3339 UTC with Z and exactly three fractional digits; the rule ranges over every entry",
         "EP-4.1-set-retrieved_at-least": "rev8 Finding 36: the set-level retrieved_at MUST equal the bytewise-least retrieved_at among all entries",
         "EP-4.3-a-counts": "review draft §4.3 (a) as amended (rev5 24d, rev8 Findings 41, 44): pinned_count, source_count and fully_pinned MUST be consistent with the entries; absent declared counts derive from the entries and MUST NOT halt for want of them",
         "EP-4.3-a-snippet-required": "rev8 Finding 46: step (a) MUST halt on a pinned entry whose snippet_sha256 is absent or null, and MUST NOT let it reach leaf or root construction",
         "EP-4.3-b-root-recompute": "review draft §4.3 (b): a non-null evidence_root is recomputed from sources; a mismatch is malformed and halts",
-        "EP-4.3-c-content-unknown": "review draft §4.3 (c) as amended (rev4 Finding 17, rev8 Finding 45): a content mismatch, or content not held, resolves unknown for that item with a per-item reason (content_differs | content_not_held) and MUST NOT halt",
-        "EP-4.3-d-absent-unknown": "review draft §4.3 (d): a receipt carrying no evidence_set resolves unknown for the step and MUST NOT fail it",
+        "EP-4.3-c-partial-unknown": "§4.3 (c) as restated by rev2 §5: when fully_pinned is false the step resolves unknown, and the receipt MUST NOT be treated as malformed on that account",
+        "EP-4.3-d-content-item-unknown": "§4.3 (d) as amended (rev2 §5, rev4 Finding 17, rev8 Finding 45): a content mismatch, or content not held, resolves unknown for that item with a per-item reason (content_differs | content_not_held) and MUST NOT halt",
+        "EP-4.3-e-absent-unknown": "§4.3 (e) (review draft (d)): a receipt carrying no evidence_set resolves unknown for the step and MUST NOT fail it",
+        "EP-4.3-f-declared-partial-not-invalid": "rev2 §5 step (f): a properly declared partial evidence set is not invalid and the receipt is not malformed; an implementation MUST NOT treat an unknown resolution under (c) as a malformed-receipt condition",
+        "EP-4.3-g-distinct-category": "rev2 §5 step (g): a verifier MUST treat an unknown resolution under (c) as a distinct category and MUST NOT present it as a weaker form of a satisfied offline-recompute claim; a verifier that reports, displays, summarises or forwards an outcome MUST carry the distinction",
+        "EP-4.1.2-root-inside-signed-payload": "rev2 §4 (Finding 4, Q2): evidence_root MUST be inside the signed payload, without exception",
         "EP-4.3-resolved-token": "rev6 Finding 29: the affirmative step resolution is the token resolved; an implementation MUST emit resolved or unknown and no other value",
         "EP-4.3-diagnostic-naming": "rev6 Finding 31: when more than one condition is violated the implementation halts on the first in section order and names it; a vector injecting more than one condition MUST state which",
         "EP-4.3-empty-set": "rev4 Finding 20: an evidence_set whose sources names no entries is malformed (evidence_set_names_no_sources)",
@@ -197,8 +203,8 @@
       "note": "third-party text; out of the in-scope document set"
     },
     "EXT-signing-trust-ref-v1": {
-      "title": "signing-trust-ref-v1 (giskard09/argentum-core)",
-      "pinned": "commit 16dbc92 per the v0.3 README",
+      "title": "signing-trust-ref-v1 (giskard09/argentum-core docs/spec/signing-trust-ref.md)",
+      "pinned": "not pinned by the corpus: the manifests name signing-trust-ref-v1 without a commit (16dbc92 is their pin for action-ref.md only). Revision selected by this mapping for reference: 16dbc92",
       "note": "third-party text; the composed checkers do not assert it"
     },
     "EXT-mycelium-provider-protocol": {
@@ -472,9 +478,10 @@
             },
             {
               "requirement": "RMT-action-ref",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
-              "assertion": "screen_ref.action_ref recomputed as SHA-256(JCS({agent_id, action_type, scope, timestamp})) and compared with the signed value"
+              "assertion": "executed part: screen_ref.action_ref recomputed as SHA-256(JCS({agent_id, action_type, scope, timestamp})) and compared with the signed value",
+              "note": "the timestamp form (RFC 3339 UTC, exactly 3 fractional digits) and the preimage grammar are not validated"
             }
           ],
           "external_requirements": [
@@ -530,9 +537,10 @@
             },
             {
               "requirement": "RMT-action-ref",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
-              "assertion": "screen_ref.action_ref recomputed as SHA-256(JCS({agent_id, action_type, scope, timestamp})) and compared with the signed value"
+              "assertion": "executed part: screen_ref.action_ref recomputed as SHA-256(JCS({agent_id, action_type, scope, timestamp})) and compared with the signed value",
+              "note": "the timestamp form (RFC 3339 UTC, exactly 3 fractional digits) and the preimage grammar are not validated"
             }
           ],
           "external_requirements": [
@@ -588,9 +596,10 @@
             },
             {
               "requirement": "RMT-action-ref",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
-              "assertion": "screen_ref.action_ref recomputed as SHA-256(JCS({agent_id, action_type, scope, timestamp})) and compared with the signed value"
+              "assertion": "executed part: screen_ref.action_ref recomputed as SHA-256(JCS({agent_id, action_type, scope, timestamp})) and compared with the signed value",
+              "note": "the timestamp form (RFC 3339 UTC, exactly 3 fractional digits) and the preimage grammar are not validated"
             }
           ],
           "external_requirements": [
@@ -614,9 +623,10 @@
             },
             {
               "requirement": "D01-5.3-fail-closed",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
-              "assertion": "a signature-invalid envelope is rejected as a whole; no partial acceptance"
+              "assertion": "executed part: one signature-invalid envelope is rejected as a whole",
+              "note": "no gate decision is emitted, and the other §5.3 conditions (missing, expired, unresolvable mapping) are not exercised"
             },
             {
               "requirement": "D01-4.3-8-mismatch-halts",
@@ -679,9 +689,10 @@
           "requirements": [
             {
               "requirement": "RMT-action-ref",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "examples/v0.3-composed/verify.mjs (mirrored by verify.py)",
-              "assertion": "an action_ref that is not the four-field recompute is rejected (screen_ref_action_ref_mismatch)"
+              "assertion": "executed part: an action_ref that is not the four-field recompute is rejected (screen_ref_action_ref_mismatch)",
+              "note": "hash recompute only; no timestamp-form or preimage-grammar validation"
             }
           ],
           "external_requirements": [
@@ -758,9 +769,10 @@
             },
             {
               "requirement": "RMT-action-ref",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "examples/v0.4-composed/verify.mjs (mirrored by verify.py)",
-              "assertion": "screen_ref.action_ref recomputed as SHA-256(JCS(four fields)) and compared"
+              "assertion": "executed part: screen_ref.action_ref recomputed as SHA-256(JCS(four fields)) and compared",
+              "note": "no timestamp-form or preimage-grammar validation"
             }
           ],
           "external_requirements": [
@@ -819,7 +831,7 @@
       ],
       "external_documents": [],
       "checkers": [
-        "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs (published, same author as the generator)",
+        "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs (published, same author as the generator; per its README not a conformance verifier: it checks roots, census and condition identifiers)",
         "fixtures/evidence-pinning-fixture-generator-rev8.py (emitter validation)",
         "external: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py"
       ],
@@ -898,9 +910,9 @@
             },
             {
               "requirement": "EP-4.1.1-digest-as-received",
-              "coverage": "covered",
-              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "the digest, not the source text, is bound"
+              "coverage": "not covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs does not execute it",
+              "assertion": "the checker consumes the supplied snippet_sha256 and never hashes content, so how the digest is computed is not exercised"
             }
           ],
           "external_requirements": []
@@ -1016,9 +1028,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1044,9 +1057,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1066,9 +1080,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1094,9 +1109,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1116,9 +1132,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1138,9 +1155,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1166,9 +1184,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1188,9 +1207,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1210,9 +1230,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1232,9 +1253,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1254,9 +1276,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1276,9 +1299,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1298,9 +1322,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1320,9 +1345,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1342,9 +1368,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1421,9 +1448,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1436,9 +1464,9 @@
           "requirements": [
             {
               "requirement": "EP-4.1.2-empty-root-null",
-              "coverage": "covered",
-              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "evidence_root null over an empty pinned set; receipt well-formed"
+              "coverage": "not covered",
+              "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs does not execute it",
+              "assertion": "the vector carries no computed member, so the cross-check's root loop skips it; a non-null root in this vector would still pass. The null expectation is prose only"
             }
           ],
           "external_requirements": []
@@ -1450,7 +1478,7 @@
           "root_bearing": false,
           "requirements": [
             {
-              "requirement": "EP-4.3-d-absent-unknown",
+              "requirement": "EP-4.3-e-absent-unknown",
               "coverage": "partial",
               "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
               "assertion": "no evidence_set -> unknown; MUST NOT halt"
@@ -1465,16 +1493,16 @@
           "root_bearing": false,
           "requirements": [
             {
-              "requirement": "EP-4.1-fully_pinned-stated",
+              "requirement": "EP-4.3-c-partial-unknown",
               "coverage": "partial",
               "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
-              "assertion": "declared partial set"
+              "assertion": "fully_pinned false: step resolves unknown"
             },
             {
-              "requirement": "EP-4.3-c-content-unknown",
+              "requirement": "EP-4.3-g-distinct-category",
               "coverage": "partial",
               "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
-              "assertion": "step resolves unknown; must_not valid on the offline-recompute claim"
+              "assertion": "must_not: valid on the offline-recompute claim (the distinction is carried, not collapsed)"
             }
           ],
           "external_requirements": []
@@ -1486,10 +1514,16 @@
           "root_bearing": false,
           "requirements": [
             {
+              "requirement": "EP-4.3-f-declared-partial-not-invalid",
+              "coverage": "partial",
+              "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
+              "assertion": "declared partial set: receipt core-valid, NOT malformed, MUST NOT halt"
+            },
+            {
               "requirement": "EP-4.1-fully_pinned-stated",
               "coverage": "partial",
               "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
-              "assertion": "receipt core-valid; NOT malformed; MUST NOT halt"
+              "assertion": "the partial state is declared, not concealed"
             }
           ],
           "external_requirements": []
@@ -1501,7 +1535,7 @@
           "root_bearing": false,
           "requirements": [
             {
-              "requirement": "EP-4.3-c-content-unknown",
+              "requirement": "EP-4.3-d-content-item-unknown",
               "coverage": "partial",
               "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
               "assertion": "unknown; per-item reason content_differs"
@@ -1516,7 +1550,7 @@
           "root_bearing": false,
           "requirements": [
             {
-              "requirement": "EP-4.3-c-content-unknown",
+              "requirement": "EP-4.3-d-content-item-unknown",
               "coverage": "partial",
               "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
               "assertion": "unknown; per-item reason content_not_held"
@@ -1531,7 +1565,7 @@
           "root_bearing": false,
           "requirements": [
             {
-              "requirement": "EP-4.3-c-content-unknown",
+              "requirement": "EP-4.3-d-content-item-unknown",
               "coverage": "partial",
               "checker": "external run: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py against this file (40 of 44 agree; see notes)",
               "assertion": "per-item reason content_not_held on the unpinned entry itself (Finding 45)"
@@ -1590,9 +1624,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1612,9 +1647,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1634,9 +1670,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1671,9 +1708,10 @@
             },
             {
               "requirement": "EP-4.3-condition-identifiers",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs",
-              "assertion": "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"
+              "assertion": "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)",
+              "note": "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"
             }
           ],
           "external_requirements": []
@@ -1869,9 +1907,9 @@
             },
             {
               "requirement": "D01-5.2-threshold-from-mapping",
-              "coverage": "covered",
+              "coverage": "partial",
               "checker": "conformance/check.mjs (a second, separate derivation of the rule table)",
-              "assertion": "the runner refuses a manifest threshold that differs from the mapping's"
+              "assertion": "executed part: the runner compares the manifest's threshold with a hard-coded 0.7; no mapping document is fetched or recovered"
             }
           ],
           "external_requirements": []
@@ -2026,11 +2064,16 @@
   },
   "reverse_view": {
     "D01": {
+      "corpora": [
+        "v0.3-composed",
+        "v0.4-composed",
+        "rule2"
+      ],
       "summary": {
-        "requirements": 52,
-        "covered": 12,
-        "partial": 4,
-        "not_covered": 36,
+        "requirements": 53,
+        "covered": 10,
+        "partial": 6,
+        "not_covered": 37,
         "not_covered_list": [
           "D01-3.2-env-ordering",
           "D01-4.1-typ",
@@ -2061,13 +2104,14 @@
           "D01-7.1-publish-anchors",
           "D01-7.1-harness",
           "D01-7.2-cadence",
+          "D01-7.2-surface-stale",
           "D01-9.1-ordering-holds",
           "D01-9.2-key-rotation",
           "D01-9.2-replay",
-          "D01-9.2-confidence-inflation",
+          "D01-9.2-sample-harness",
           "D01-9.2-downgrade",
           "D01-9.2-mapping-tampering",
-          "D01-10-iana"
+          "D01-10-well-known-jwks"
         ]
       },
       "requirements": {
@@ -2561,12 +2605,12 @@
         },
         "D01-5.2-threshold-from-mapping": {
           "text": "§5.2: the threshold is recovered from the named mapping; two receipts under one mapping ID MUST gate against the same threshold",
-          "coverage": "covered",
+          "coverage": "partial",
           "vectors": [
             {
               "corpus": "rule2",
               "vector": "rule4-weak",
-              "coverage": "covered"
+              "coverage": "partial"
             }
           ]
         },
@@ -2593,12 +2637,12 @@
         },
         "D01-5.3-fail-closed": {
           "text": "§5.3: missing, malformed, expired, signature-invalid or unresolvable-mapping receipts MUST be treated as halt; implementations MUST NOT default to act",
-          "coverage": "covered",
+          "coverage": "partial",
           "vectors": [
             {
               "corpus": "v0.3-composed",
               "vector": "comp-r01",
-              "coverage": "covered"
+              "coverage": "partial"
             }
           ]
         },
@@ -2632,13 +2676,18 @@
           "coverage": "not covered",
           "vectors": []
         },
+        "D01-7.2-surface-stale": {
+          "text": "§7.2: relying parties consuming receipts with stale calibration SHOULD log and surface the staleness rather than silently accept",
+          "coverage": "not covered",
+          "vectors": []
+        },
         "D01-9.1-ordering-holds": {
           "text": "§9.1: the §3.2 ordering MUST hold when composed with environment.*",
           "coverage": "not covered",
           "vectors": []
         },
         "D01-9.2-key-rotation": {
-          "text": "§9.2: issuers MUST rotate JWKS keys on a published cadence; RPs MUST honor key revocation lists",
+          "text": "§9.2: issuers MUST rotate JWKS keys on a published cadence; RPs MUST honor key revocation lists where published",
           "coverage": "not covered",
           "vectors": []
         },
@@ -2647,8 +2696,8 @@
           "coverage": "not covered",
           "vectors": []
         },
-        "D01-9.2-confidence-inflation": {
-          "text": "§9.2: RPs SHOULD monitor issuer calibration drift",
+        "D01-9.2-sample-harness": {
+          "text": "§9.2 (confidence inflation): RPs SHOULD periodically sample receipts against the issuer's published harness",
           "coverage": "not covered",
           "vectors": []
         },
@@ -2662,8 +2711,8 @@
           "coverage": "not covered",
           "vectors": []
         },
-        "D01-10-iana": {
-          "text": "§10: IANA considerations (registration statement)",
+        "D01-10-well-known-jwks": {
+          "text": "§10: verification issuers using HTTPS SHOULD publish their JWKS at /.well-known/jwks.json per RFC 7517 §4.7 conventions",
           "coverage": "not covered",
           "vectors": []
         }
@@ -2671,42 +2720,46 @@
       "note": "rule2 vectors count here but are labelled NOT NORMATIVE in their manifest; a reader wanting the normative-only view removes them"
     },
     "RMT": {
+      "corpora": [
+        "v0.3-composed",
+        "v0.4-composed"
+      ],
       "summary": {
         "requirements": 2,
-        "covered": 1,
-        "partial": 1,
+        "covered": 0,
+        "partial": 2,
         "not_covered": 0,
         "not_covered_list": []
       },
       "requirements": {
         "RMT-action-ref": {
           "text": "action_ref is computed per draft-giskard-aeoess-action-ref over agent_id, action_type, scope, timestamp (RFC 3339 UTC, exactly 3 fractional digits)",
-          "coverage": "covered",
+          "coverage": "partial",
           "vectors": [
             {
               "corpus": "v0.3-composed",
               "vector": "comp-005",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "v0.3-composed",
               "vector": "comp-006",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "v0.3-composed",
               "vector": "comp-007",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "v0.3-composed",
               "vector": "comp-r04",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "v0.4-composed",
               "vector": "comp-008",
-              "coverage": "covered"
+              "coverage": "partial"
             }
           ]
         },
@@ -2729,6 +2782,9 @@
       }
     },
     "MAP": {
+      "corpora": [
+        "rule2"
+      ],
       "summary": {
         "requirements": 9,
         "covered": 8,
@@ -2851,14 +2907,20 @@
       "note": "exercised only by the NOT NORMATIVE rule2 set"
     },
     "EP": {
+      "corpora": [
+        "evidence-pinning-rev8"
+      ],
       "summary": {
-        "requirements": 28,
-        "covered": 11,
-        "partial": 14,
-        "not_covered": 3,
+        "requirements": 33,
+        "covered": 8,
+        "partial": 19,
+        "not_covered": 6,
         "not_covered_list": [
           "EP-4.1-members",
+          "EP-4.1.1-digest-as-received",
           "EP-4.1.2-domain-separation",
+          "EP-4.1.2-no-identical-entries-mixed-pair",
+          "EP-4.1.2-root-inside-signed-payload",
           "EP-5-non-establishment"
         ]
       },
@@ -2872,11 +2934,6 @@
           "text": "review draft §4.1: fully_pinned is stated, not derived; an issuer MUST NOT omit it when some items are unpinned; partial pinning is an honest state",
           "coverage": "partial",
           "vectors": [
-            {
-              "corpus": "evidence-pinning-rev8",
-              "vector": "evi-partial-resolves-unknown",
-              "coverage": "partial"
-            },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-declared-partial-is-not-invalid",
@@ -2896,13 +2953,13 @@
           ]
         },
         "EP-4.1.1-digest-as-received": {
-          "text": "review draft §4.1.1: snippet_sha256 is computed over the content exactly as received, UTF-8, no normalization",
-          "coverage": "covered",
+          "text": "review draft §4.1.1 as amended (rev4 Finding 16): snippet_sha256 is computed over the retrieved content exactly as received, the octet sequence as it arrived, with no transcoding, trimming, whitespace collapsing, case folding or Unicode normalization; there is no character-encoding step, the digest is over bytes, not text",
+          "coverage": "not covered",
           "vectors": [
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-snippet-change-changes-root",
-              "coverage": "covered"
+              "coverage": "not covered"
             }
           ]
         },
@@ -3072,7 +3129,7 @@
         },
         "EP-4.1.2-empty-root-null": {
           "text": "review draft §4.1.2 / rev8 Finding 43: when pinned_count is zero evidence_root MUST be null; a non-null root with zero pinned entries, or a null root with pinned entries, is malformed",
-          "coverage": "covered",
+          "coverage": "partial",
           "vectors": [
             {
               "corpus": "evidence-pinning-rev8",
@@ -3092,12 +3149,12 @@
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-empty-root-null",
-              "coverage": "covered"
+              "coverage": "not covered"
             }
           ]
         },
         "EP-4.1.2-no-identical-entries": {
-          "text": "rev5 Finding 24a / rev8 Finding 35: two entries MUST NOT be identical across the bound members; the identity rule ranges over every entry, pinned or unpinned (duplicate_bound_tuple)",
+          "text": "rev5 Finding 24a as amended by rev8 Finding 35: two entries in sources are one retrieval recorded twice when they are identical in url and retrieved_at and, where both are pinned, also identical in snippet_sha256 and content_kind; the rule ranges over every entry, pinned and unpinned alike; malformed, gate decision halt (duplicate_bound_tuple)",
           "coverage": "covered",
           "vectors": [
             {
@@ -3111,6 +3168,11 @@
               "coverage": "covered"
             }
           ]
+        },
+        "EP-4.1.2-no-identical-entries-mixed-pair": {
+          "text": "rev8 Finding 35, stated consequence: a pinned entry and an unpinned entry sharing url and retrieved_at are also one retrieval recorded twice and the set halts. rev8 records that no vector in that revision covers this mixed pair",
+          "coverage": "not covered",
+          "vectors": []
         },
         "EP-4.1.2-retrieved_at-form": {
           "text": "rev6 Finding 32 / rev8 Finding 37: retrieved_at MUST be RFC 3339 UTC with Z and exactly three fractional digits; the rule ranges over every entry",
@@ -3202,15 +3264,21 @@
             }
           ]
         },
-        "EP-4.3-c-content-unknown": {
-          "text": "review draft §4.3 (c) as amended (rev4 Finding 17, rev8 Finding 45): a content mismatch, or content not held, resolves unknown for that item with a per-item reason (content_differs | content_not_held) and MUST NOT halt",
+        "EP-4.3-c-partial-unknown": {
+          "text": "§4.3 (c) as restated by rev2 §5: when fully_pinned is false the step resolves unknown, and the receipt MUST NOT be treated as malformed on that account",
           "coverage": "partial",
           "vectors": [
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-partial-resolves-unknown",
               "coverage": "partial"
-            },
+            }
+          ]
+        },
+        "EP-4.3-d-content-item-unknown": {
+          "text": "§4.3 (d) as amended (rev2 §5, rev4 Finding 17, rev8 Finding 45): a content mismatch, or content not held, resolves unknown for that item with a per-item reason (content_differs | content_not_held) and MUST NOT halt",
+          "coverage": "partial",
+          "vectors": [
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-content-mismatch-unknown",
@@ -3228,8 +3296,8 @@
             }
           ]
         },
-        "EP-4.3-d-absent-unknown": {
-          "text": "review draft §4.3 (d): a receipt carrying no evidence_set resolves unknown for the step and MUST NOT fail it",
+        "EP-4.3-e-absent-unknown": {
+          "text": "§4.3 (e) (review draft (d)): a receipt carrying no evidence_set resolves unknown for the step and MUST NOT fail it",
           "coverage": "partial",
           "vectors": [
             {
@@ -3238,6 +3306,33 @@
               "coverage": "partial"
             }
           ]
+        },
+        "EP-4.3-f-declared-partial-not-invalid": {
+          "text": "rev2 §5 step (f): a properly declared partial evidence set is not invalid and the receipt is not malformed; an implementation MUST NOT treat an unknown resolution under (c) as a malformed-receipt condition",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-declared-partial-is-not-invalid",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.3-g-distinct-category": {
+          "text": "rev2 §5 step (g): a verifier MUST treat an unknown resolution under (c) as a distinct category and MUST NOT present it as a weaker form of a satisfied offline-recompute claim; a verifier that reports, displays, summarises or forwards an outcome MUST carry the distinction",
+          "coverage": "partial",
+          "vectors": [
+            {
+              "corpus": "evidence-pinning-rev8",
+              "vector": "evi-partial-resolves-unknown",
+              "coverage": "partial"
+            }
+          ]
+        },
+        "EP-4.1.2-root-inside-signed-payload": {
+          "text": "rev2 §4 (Finding 4, Q2): evidence_root MUST be inside the signed payload, without exception",
+          "coverage": "not covered",
+          "vectors": []
         },
         "EP-4.3-resolved-token": {
           "text": "rev6 Finding 29: the affirmative step resolution is the token resolved; an implementation MUST emit resolved or unknown and no other value",
@@ -3274,107 +3369,107 @@
         },
         "EP-4.3-condition-identifiers": {
           "text": "rev7 Finding 33 / rev8 Finding 38: MALFORMED outcomes are reported with a condition identifier from the registry; superseded identifiers are published as such and fail the build",
-          "coverage": "covered",
+          "coverage": "partial",
           "vectors": [
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-set-retrieved-at-not-earliest-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-content-kind-absent-when-pinned-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-resource-sha256-with-full-resource-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-full-resource-digest-on-unpinned-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-pinned-absent-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-pinned-not-boolean-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-snippet-sha256-absent-when-pinned-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-empty-set-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-duplicate-bound-tuple-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-unpinned-reason-outside-domain-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-unpinned-without-reason-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-source-count-mismatch-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-count-inconsistency-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-root-with-zero-pinned-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-nonzero-pinned-null-root-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-root-mismatch-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-retrieved-at-noncanonical-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-duplicate-unpinned-entries-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-unpinned-retrieved-at-noncanonical-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             },
             {
               "corpus": "evidence-pinning-rev8",
               "vector": "evi-set-retrieved-at-above-unpinned-value-rejects",
-              "coverage": "covered"
+              "coverage": "partial"
             }
           ]
         },

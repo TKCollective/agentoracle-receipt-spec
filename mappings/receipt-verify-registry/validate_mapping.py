@@ -6,7 +6,8 @@ Independent of the generator: it re-reads the manifests, and checks that
      vector id exists in its manifest (and vice versa);
   2. every requirement identifier referenced exists in the registry, and every
      registry identifier appears in the reverse view;
-  3. the reverse view agrees with the forward view (recomputed here);
+  3. the reverse view EQUALS the forward view scoped to the corpora each view names
+     (every hit, and the best coverage), recomputed here;
   4. every pinned text digest in the registry matches the file at this checkout;
   5. mapping.json conforms to mapping.schema.json when the `jsonschema` package
      is available (otherwise the structural checks above stand alone and this
@@ -55,21 +56,24 @@ for name, c in doc["corpora"].items():
 in_reverse = {rid for view in doc["reverse_view"].values() for rid in view["requirements"]}
 for rid in registry - in_reverse: problems.append(f"registry requirement missing from the reverse view: {rid}")
 
-# 3. reverse view recomputed from the forward view
+# 3. reverse view MUST EQUAL the forward view scoped to the corpora it names
 rank = {"not covered": 0, "partial": 1, "covered": 2}
 for doc_id, view in doc["reverse_view"].items():
+    scope = view["corpora"]
+    for name in scope:
+        if name not in doc["corpora"]: problems.append(f"reverse {doc_id}: names unknown corpus {name}")
+    doc_reqs = set(doc["requirement_documents"][doc_id]["requirements"])
+    if set(view["requirements"]) != doc_reqs: problems.append(f"reverse {doc_id}: requirement set differs from the registry")
     for rid, row in view["requirements"].items():
         hits = []
-        for name, c in doc["corpora"].items():
-            for v in c["vectors"]:
+        for name in scope:
+            for v in doc["corpora"][name]["vectors"]:
                 for r in v.get("requirements", []):
                     if r["requirement"] == rid: hits.append((name, v["id"], r["coverage"]))
         listed = [(h["corpus"], h["vector"], h["coverage"]) for h in row["vectors"]]
-        # the reverse view may scope to a subset of corpora; every listed hit must exist and coverage must be the best of the listed
-        for h in listed:
-            if h not in hits: problems.append(f"reverse {rid}: lists {h} which the forward view does not contain")
-        best = max((rank[h[2]] for h in listed), default=0)
-        if rank[row["coverage"]] != best: problems.append(f"reverse {rid}: coverage {row['coverage']} != best of listed vectors")
+        if sorted(listed) != sorted(hits): problems.append(f"reverse {rid}: listed hits {sorted(listed)} != scoped forward hits {sorted(hits)}")
+        best = max((rank[h[2]] for h in hits), default=0)
+        if rank[row["coverage"]] != best: problems.append(f"reverse {rid}: coverage {row['coverage']} != best of the scoped forward hits")
     s = view["summary"]
     counts = {"covered": 0, "partial": 0, "not covered": 0}
     for row in view["requirements"].values(): counts[row["coverage"]] += 1

@@ -87,13 +87,14 @@ DOCS["D01"] = {
         ("D01-7.1-publish-anchors", "§7.1: verifier issuers MUST publish calibration anchors (the listed items)"),
         ("D01-7.1-harness", "§7.1: verifier issuers SHOULD publish a reference reproduction harness under a permissive license"),
         ("D01-7.2-cadence", "§7.2: issuers SHOULD publish a recalibration cadence; v_calibration.valid_until SHOULD reflect it"),
+        ("D01-7.2-surface-stale", "§7.2: relying parties consuming receipts with stale calibration SHOULD log and surface the staleness rather than silently accept"),
         ("D01-9.1-ordering-holds", "§9.1: the §3.2 ordering MUST hold when composed with environment.*"),
-        ("D01-9.2-key-rotation", "§9.2: issuers MUST rotate JWKS keys on a published cadence; RPs MUST honor key revocation lists"),
+        ("D01-9.2-key-rotation", "§9.2: issuers MUST rotate JWKS keys on a published cadence; RPs MUST honor key revocation lists where published"),
         ("D01-9.2-replay", "§9.2: RPs MUST verify iat and exp against current time"),
-        ("D01-9.2-confidence-inflation", "§9.2: RPs SHOULD monitor issuer calibration drift"),
+        ("D01-9.2-sample-harness", "§9.2 (confidence inflation): RPs SHOULD periodically sample receipts against the issuer's published harness"),
         ("D01-9.2-downgrade", "§9.2: a relying party MUST NOT accept a v0.3-spec receipt against a v0.4-spec gate"),
         ("D01-9.2-mapping-tampering", "§9.2: receipts MUST bind to a content-addressed mapping; mapping documents MUST be hosted with a stable digest"),
-        ("D01-10-iana", "§10: IANA considerations (registration statement)"),
+        ("D01-10-well-known-jwks", "§10: verification issuers using HTTPS SHOULD publish their JWKS at /.well-known/jwks.json per RFC 7517 §4.7 conventions"),
     ]),
 }
 DOCS["RMT"] = {
@@ -141,7 +142,7 @@ DOCS["EP"] = {
         ("EP-4.1-members", "review draft §4.1: an evidence_set, when present, MUST be an object with evidence_set_version, retrieved_at, source_count, pinned_count (<= source_count), fully_pinned, evidence_root, sources"),
         ("EP-4.1-fully_pinned-stated", "review draft §4.1: fully_pinned is stated, not derived; an issuer MUST NOT omit it when some items are unpinned; partial pinning is an honest state"),
         ("EP-4.1.1-entry-members", "review draft §4.1.1 as amended (rev2 §3): each sources entry carries url, snippet_sha256 (or null), retrieved_at, pinned, and content_kind when pinned"),
-        ("EP-4.1.1-digest-as-received", "review draft §4.1.1: snippet_sha256 is computed over the content exactly as received, UTF-8, no normalization"),
+        ("EP-4.1.1-digest-as-received", "review draft §4.1.1 as amended (rev4 Finding 16): snippet_sha256 is computed over the retrieved content exactly as received, the octet sequence as it arrived, with no transcoding, trimming, whitespace collapsing, case folding or Unicode normalization; there is no character-encoding step, the digest is over bytes, not text"),
         ("EP-4.1.1-url-bytes", "rev2 §3: the url carried in an entry MUST be the URI bytes used for retrieval, without normalization"),
         ("EP-4.1.1-possession", "rev2 §3 (possession rule): an issuer MUST pin every item for which it received content bytes; every pinned: false entry MUST carry an unpinned_reason from the stated domain; an item outside that domain or without a reason is malformed"),
         ("EP-4.1.1-content_kind", "rev2 §3 / rev6 Finding 30: content_kind MUST be present and one of the defined values when pinned; on an unpinned entry it MUST be absent or null (equivalent)"),
@@ -153,14 +154,19 @@ DOCS["EP"] = {
         ("EP-4.1.2-canonical-order", "review draft §4.1.2 as amended (rev4 Finding 15c): leaves sort ascending by the four-term key url, snippet_sha256, content_kind, retrieved_at, bytewise over UTF-8"),
         ("EP-4.1.2-domain-separation", "review draft §4.1.2: distinct leaf and node prefixes; a leaf hash can never be reinterpreted as a node"),
         ("EP-4.1.2-empty-root-null", "review draft §4.1.2 / rev8 Finding 43: when pinned_count is zero evidence_root MUST be null; a non-null root with zero pinned entries, or a null root with pinned entries, is malformed"),
-        ("EP-4.1.2-no-identical-entries", "rev5 Finding 24a / rev8 Finding 35: two entries MUST NOT be identical across the bound members; the identity rule ranges over every entry, pinned or unpinned (duplicate_bound_tuple)"),
+        ("EP-4.1.2-no-identical-entries", "rev5 Finding 24a as amended by rev8 Finding 35: two entries in sources are one retrieval recorded twice when they are identical in url and retrieved_at and, where both are pinned, also identical in snippet_sha256 and content_kind; the rule ranges over every entry, pinned and unpinned alike; malformed, gate decision halt (duplicate_bound_tuple)"),
+        ("EP-4.1.2-no-identical-entries-mixed-pair", "rev8 Finding 35, stated consequence: a pinned entry and an unpinned entry sharing url and retrieved_at are also one retrieval recorded twice and the set halts. rev8 records that no vector in that revision covers this mixed pair"),
         ("EP-4.1.2-retrieved_at-form", "rev6 Finding 32 / rev8 Finding 37: retrieved_at MUST be RFC 3339 UTC with Z and exactly three fractional digits; the rule ranges over every entry"),
         ("EP-4.1-set-retrieved_at-least", "rev8 Finding 36: the set-level retrieved_at MUST equal the bytewise-least retrieved_at among all entries"),
         ("EP-4.3-a-counts", "review draft §4.3 (a) as amended (rev5 24d, rev8 Findings 41, 44): pinned_count, source_count and fully_pinned MUST be consistent with the entries; absent declared counts derive from the entries and MUST NOT halt for want of them"),
         ("EP-4.3-a-snippet-required", "rev8 Finding 46: step (a) MUST halt on a pinned entry whose snippet_sha256 is absent or null, and MUST NOT let it reach leaf or root construction"),
         ("EP-4.3-b-root-recompute", "review draft §4.3 (b): a non-null evidence_root is recomputed from sources; a mismatch is malformed and halts"),
-        ("EP-4.3-c-content-unknown", "review draft §4.3 (c) as amended (rev4 Finding 17, rev8 Finding 45): a content mismatch, or content not held, resolves unknown for that item with a per-item reason (content_differs | content_not_held) and MUST NOT halt"),
-        ("EP-4.3-d-absent-unknown", "review draft §4.3 (d): a receipt carrying no evidence_set resolves unknown for the step and MUST NOT fail it"),
+        ("EP-4.3-c-partial-unknown", "§4.3 (c) as restated by rev2 §5: when fully_pinned is false the step resolves unknown, and the receipt MUST NOT be treated as malformed on that account"),
+        ("EP-4.3-d-content-item-unknown", "§4.3 (d) as amended (rev2 §5, rev4 Finding 17, rev8 Finding 45): a content mismatch, or content not held, resolves unknown for that item with a per-item reason (content_differs | content_not_held) and MUST NOT halt"),
+        ("EP-4.3-e-absent-unknown", "§4.3 (e) (review draft (d)): a receipt carrying no evidence_set resolves unknown for the step and MUST NOT fail it"),
+        ("EP-4.3-f-declared-partial-not-invalid", "rev2 §5 step (f): a properly declared partial evidence set is not invalid and the receipt is not malformed; an implementation MUST NOT treat an unknown resolution under (c) as a malformed-receipt condition"),
+        ("EP-4.3-g-distinct-category", "rev2 §5 step (g): a verifier MUST treat an unknown resolution under (c) as a distinct category and MUST NOT present it as a weaker form of a satisfied offline-recompute claim; a verifier that reports, displays, summarises or forwards an outcome MUST carry the distinction"),
+        ("EP-4.1.2-root-inside-signed-payload", "rev2 §4 (Finding 4, Q2): evidence_root MUST be inside the signed payload, without exception"),
         ("EP-4.3-resolved-token", "rev6 Finding 29: the affirmative step resolution is the token resolved; an implementation MUST emit resolved or unknown and no other value"),
         ("EP-4.3-diagnostic-naming", "rev6 Finding 31: when more than one condition is violated the implementation halts on the first in section order and names it; a vector injecting more than one condition MUST state which"),
         ("EP-4.3-empty-set", "rev4 Finding 20: an evidence_set whose sources names no entries is malformed (evidence_set_names_no_sources)"),
@@ -172,7 +178,7 @@ DOCS["EP"] = {
 EXTERNAL = OrderedDict([
     ("EXT-action-ref-v1", {"title": "action-ref-v1 (giskard09/argentum-core docs/spec/action-ref.md)", "pinned": "commit 16dbc92 (v0.3 and v0.4 manifests)", "note": "third-party text; out of the in-scope document set"}),
     ("EXT-delegation-chain-ref-v1", {"title": "delegation-chain-ref-v1 (giskard09/argentum-core docs/spec/delegation-chain-ref.md)", "pinned": "commit 16e140a (v0.4 manifest); unpinned in the leaf-screen-halt README", "note": "third-party text; out of the in-scope document set"}),
-    ("EXT-signing-trust-ref-v1", {"title": "signing-trust-ref-v1 (giskard09/argentum-core)", "pinned": "commit 16dbc92 per the v0.3 README", "note": "third-party text; the composed checkers do not assert it"}),
+    ("EXT-signing-trust-ref-v1", {"title": "signing-trust-ref-v1 (giskard09/argentum-core docs/spec/signing-trust-ref.md)", "pinned": "not pinned by the corpus: the manifests name signing-trust-ref-v1 without a commit (16dbc92 is their pin for action-ref.md only). Revision selected by this mapping for reference: 16dbc92", "note": "third-party text; the composed checkers do not assert it"}),
     ("EXT-mycelium-provider-protocol", {"title": "Mycelium Provider protocol (giskard09/argentum-core docs/mycelium-provider-protocol.md)", "pinned": "unpinned (README links main)", "note": "third-party text; comp-r02's null rule cites it and 'the AgentOracle composed envelope spec', which README@196df22b describes as forthcoming"}),
     ("EXT-service-integrity-D1", {"title": "service_integrity.md rule D1 (x402-research-skill standing rules): a zero-member evaluation MUST NOT produce a signed receipt", "pinned": "not a format requirement; operational rule", "note": "d1-no-receipt records it; conformance/check.mjs skips it"}),
 ])
@@ -211,13 +217,13 @@ def build_v03(manifest):
         if v["mycelium_trail_id_present"]:
             reqs = reqs + [COMPOSED_MYCELIUM(V03)]
         if v["screen_ref_present"]:
-            reqs = reqs + [cov("RMT-action-ref", "covered", V03, "screen_ref.action_ref recomputed as SHA-256(JCS({agent_id, action_type, scope, timestamp})) and compared with the signed value")]
+            reqs = reqs + [cov("RMT-action-ref", "partial", V03, "executed part: screen_ref.action_ref recomputed as SHA-256(JCS({agent_id, action_type, scope, timestamp})) and compared with the signed value", "the timestamp form (RFC 3339 UTC, exactly 3 fractional digits) and the preimage grammar are not validated")]
             ext.append({"requirement": "EXT-action-ref-v1", "assertion": "screen_ref.action_ref recomputed from the four-field preimage and compared (screen_ref_action_ref_mismatch)"})
         out.append(composed_vector(v, V03, reqs, ext))
     for v in manifest["reject_vectors"]:
         if v["id"] == "comp-r01":
             reqs = [cov("D01-4.3-1-signature", "covered", V03, "a corrupted AgentTrust signature is rejected: signature_invalid"),
-                    cov("D01-5.3-fail-closed", "covered", V03, "a signature-invalid envelope is rejected as a whole; no partial acceptance"),
+                    cov("D01-5.3-fail-closed", "partial", V03, "executed part: one signature-invalid envelope is rejected as a whole", "no gate decision is emitted, and the other §5.3 conditions (missing, expired, unresolvable mapping) are not exercised"),
                     cov("D01-4.3-8-mismatch-halts", "partial", V03, "the envelope is rejected", "the checker reports ok:false; it does not emit a gate decision")]
             ext = []
         elif v["id"] == "comp-r02":
@@ -228,7 +234,7 @@ def build_v03(manifest):
                     cov("D01-4.3-8-mismatch-halts", "partial", V03, "mismatch between a signed value and its recompute rejects the envelope", "no gate decision is emitted by the checker")]
             ext = []
         elif v["id"] == "comp-r04":
-            reqs = [cov("RMT-action-ref", "covered", V03, "an action_ref that is not the four-field recompute is rejected (screen_ref_action_ref_mismatch)")]
+            reqs = [cov("RMT-action-ref", "partial", V03, "executed part: an action_ref that is not the four-field recompute is rejected (screen_ref_action_ref_mismatch)", "hash recompute only; no timestamp-form or preimage-grammar validation")]
             ext = [{"requirement": "EXT-action-ref-v1", "assertion": "screen_ref.action_ref differing from the action-ref-v1 recompute is rejected (screen_ref_action_ref_mismatch)"}]
         out.append(composed_vector(v, V03, reqs, ext))
     return out
@@ -236,7 +242,7 @@ def build_v03(manifest):
 def build_v04(manifest):
     out = []
     for v in manifest["accept_vectors"]:
-        reqs = COMPOSED_ACCEPT_COMMON(V04) + [cov("RMT-action-ref", "covered", V04, "screen_ref.action_ref recomputed as SHA-256(JCS(four fields)) and compared")]
+        reqs = COMPOSED_ACCEPT_COMMON(V04) + [cov("RMT-action-ref", "partial", V04, "executed part: screen_ref.action_ref recomputed as SHA-256(JCS(four fields)) and compared", "no timestamp-form or preimage-grammar validation")]
         ext = [{"requirement": "EXT-action-ref-v1", "assertion": "screen_ref.action_ref recomputed and compared"},
                {"requirement": "EXT-delegation-chain-ref-v1", "assertion": "chain content address, continuity, root anchoring, leaf anchoring, leaf scope and monotonic narrowing all checked"}]
         out.append(composed_vector(v, V04, reqs, ext))
@@ -251,7 +257,7 @@ RULE2_MAP = {
     "rule2-reject-act": ([("MAP-gate_map", "verdict MUST NOT be act"), ("D01-5.1-row-2", "row 2 gate"), ("D01-5.2-uncertainty-halts", "un-probed state does not clear")], "covered"),
     "rule2-reject-collapse": ([("MAP-rule-2", "recommendation MUST NOT collapse to unverifiable"), ("D01-5.1-row-2", "row 2 is distinct from row 6")], "covered"),
     "rule1-confident": ([("MAP-rule-1", "confident_supported"), ("MAP-gate_map", "the only path to act"), ("D01-5.1-row-1", "row 1 reproduced")], "covered"),
-    "rule4-weak": ([("MAP-rule-4", "weak_supported below threshold"), ("MAP-threshold", "0.5 < 0.7"), ("D01-5.1-row-4", "row 4 reproduced"), ("D01-5.2-threshold-from-mapping", "the runner refuses a manifest threshold that differs from the mapping's")], "covered"),
+    "rule4-weak": ([("MAP-rule-4", "weak_supported below threshold"), ("MAP-threshold", "0.5 < 0.7"), ("D01-5.1-row-4", "row 4 reproduced"), ("D01-5.2-threshold-from-mapping", "PARTIAL: the runner compares the manifest's threshold with a hard-coded 0.7; no mapping document is fetched or recovered")], "covered"),
     "rule3-vulnerable": ([("MAP-rule-3", "vulnerable_supported"), ("D01-5.1-row-3", "row 3 reproduced")], "covered"),
     "rule6-unverifiable": ([("MAP-rule-6", "unverifiable"), ("D01-5.1-row-6", "row 6 reproduced")], "covered"),
     "rule5-refuted": ([("MAP-rule-5", "refuted outranks every adversarial state"), ("D01-5.1-row-5", "row 5 reproduced")], "covered"),
@@ -263,7 +269,7 @@ def build_rule2(manifest):
         pairs, coverage = RULE2_MAP[v["id"]]
         d = OrderedDict([("id", v["id"]), ("designation", v["designation"]), ("input", v["input"]),
                          ("expect", v.get("expect")), ("expect_must_not_equal", v.get("expect_must_not_equal"))])
-        d["requirements"] = [cov(r, coverage, RULE2_CHECK, a) for r, a in pairs]
+        d["requirements"] = [cov(r, "partial" if a.startswith("PARTIAL: ") else coverage, RULE2_CHECK, a.replace("PARTIAL: ", "executed part: ")) for r, a in pairs]
         d["external_requirements"] = []
         if v["id"] == "d1-no-receipt":
             d["external_requirements"] = [{"requirement": "EXT-service-integrity-D1", "assertion": "not executed: check.mjs skips inputs carrying members_evaluated (service-level, not a derivation)"}]
@@ -288,7 +294,7 @@ REV8_MAP = {
     "evi-root-odd-promotion": [rb("EP-4.1.2-odd-promotion", "root equals promote-not-duplicate construction")],
     "evi-node-child-encoding": [rb("EP-4.1.2-node", "root equals normative_root (raw-octet children) and differs from counter_construction_root")],
     "evi-leaf-member-encoding": [rb("EP-4.1.2-leaf", "root equals normative_root and differs from the counter construction")],
-    "evi-snippet-change-changes-root": [rb("EP-4.1.2-leaf", "a one-digest change changes the root"), rb("EP-4.1.1-digest-as-received", "the digest, not the source text, is bound")],
+    "evi-snippet-change-changes-root": [rb("EP-4.1.2-leaf", "a one-digest change changes the root"), ("EP-4.1.1-digest-as-received", "not covered", REV8_CHECK + " does not execute it", "the checker consumes the supplied snippet_sha256 and never hashes content, so how the digest is computed is not exercised")],
     "evi-url-normalization-changes-root": [rb("EP-4.1.1-url-bytes", "unnormalized url bytes are normative: roots differ"), rb("EP-4.1.2-leaf", "url bound in the leaf")],
     "evi-duplicate-url-distinct-digest": [rb("EP-4.1.2-canonical-order", "two entries sharing a url order deterministically by the four-term key; stable root")],
     "evi-leaf-binds-content-kind": [rb("EP-4.1.2-leaf", "content_kind is bound in the leaf preimage: root differs")],
@@ -314,13 +320,13 @@ REV8_MAP = {
     "evi-root-present-pinned-count-absent-accepted": [prose("EP-4.3-a-counts", "accepted; pinned_count derives to 1 (Finding 43)"), prose("EP-4.1.2-empty-root-null", "a non-null root is consistent with derived pinned_count 1")],
     "evi-resolve-all-counts-absent-accepted": [prose("EP-4.3-a-counts", "step resolves on derived values; MUST NOT halt for want of declared counts (Finding 44)")],
     "evi-root-mismatch-rejects": [mf("EP-4.3-b-root-recompute", "condition root_not_recomputable_from_sources")],
-    "evi-empty-root-null": [rb("EP-4.1.2-empty-root-null", "evidence_root null over an empty pinned set; receipt well-formed")],
-    "evi-absent-unknown": [prose("EP-4.3-d-absent-unknown", "no evidence_set -> unknown; MUST NOT halt")],
-    "evi-partial-resolves-unknown": [prose("EP-4.1-fully_pinned-stated", "declared partial set"), prose("EP-4.3-c-content-unknown", "step resolves unknown; must_not valid on the offline-recompute claim")],
-    "evi-declared-partial-is-not-invalid": [prose("EP-4.1-fully_pinned-stated", "receipt core-valid; NOT malformed; MUST NOT halt")],
-    "evi-content-mismatch-unknown": [prose("EP-4.3-c-content-unknown", "unknown; per-item reason content_differs")],
-    "evi-content-not-held-unknown": [prose("EP-4.3-c-content-unknown", "unknown; per-item reason content_not_held")],
-    "evi-unpinned-item-reason-content-not-held": [prose("EP-4.3-c-content-unknown", "per-item reason content_not_held on the unpinned entry itself (Finding 45)")],
+    "evi-empty-root-null": [("EP-4.1.2-empty-root-null", "not covered", REV8_CHECK + " does not execute it", "the vector carries no computed member, so the cross-check's root loop skips it; a non-null root in this vector would still pass. The null expectation is prose only")],
+    "evi-absent-unknown": [prose("EP-4.3-e-absent-unknown", "no evidence_set -> unknown; MUST NOT halt")],
+    "evi-partial-resolves-unknown": [prose("EP-4.3-c-partial-unknown", "fully_pinned false: step resolves unknown"), prose("EP-4.3-g-distinct-category", "must_not: valid on the offline-recompute claim (the distinction is carried, not collapsed)")],
+    "evi-declared-partial-is-not-invalid": [prose("EP-4.3-f-declared-partial-not-invalid", "declared partial set: receipt core-valid, NOT malformed, MUST NOT halt"), prose("EP-4.1-fully_pinned-stated", "the partial state is declared, not concealed")],
+    "evi-content-mismatch-unknown": [prose("EP-4.3-d-content-item-unknown", "unknown; per-item reason content_differs")],
+    "evi-content-not-held-unknown": [prose("EP-4.3-d-content-item-unknown", "unknown; per-item reason content_not_held")],
+    "evi-unpinned-item-reason-content-not-held": [prose("EP-4.3-d-content-item-unknown", "per-item reason content_not_held on the unpinned entry itself (Finding 45)")],
     "evi-step-resolves-affirmatively": [prose("EP-4.3-resolved-token", "step resolves `resolved`, not unknown, not a halt (Finding 29)")],
     "evi-unpinned-members-absent-accepted": [prose("EP-4.1.1-content_kind", "omitted member equivalent to explicit null on an unpinned entry (Finding 30)")],
     "evi-retrieved-at-noncanonical-rejects": [mf("EP-4.1.2-retrieved_at-form", "condition retrieved_at_not_canonical_form")],
@@ -339,7 +345,7 @@ def build_rev8(manifest):
         d["root_bearing"] = bool(v.get("computed"))
         d["requirements"] = [cov(r, c, ch, a) for (r, c, ch, a) in REV8_MAP[v["id"]]]
         if "condition" in v:
-            d["requirements"].append(cov("EP-4.3-condition-identifiers", "covered", REV8_CHECK, "every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)"))
+            d["requirements"].append(cov("EP-4.3-condition-identifiers", "partial", REV8_CHECK, "executed part: every MALFORMED vector carries a condition member and none names a superseded identifier (Findings 33, 38)", "the cross-check does not check that a verifier reports the correct condition for the input; an invented condition name would still pass"))
         d["external_requirements"] = []
         if v["id"] in REV8_DISAGREE:
             d["notes"] = ["the external cold-checker run (babyblueviper1, 2026-09-29) disagrees on this vector: it omits snippet_sha256 on an unpinned entry, which -03 §5.3.2 requires present; the corpus side is to be repaired (rev9). Coverage here is as the rev8 text states it."]
@@ -375,7 +381,7 @@ def reverse_view(doc_id, vectors_by_corpus, corpora_in_scope):
                            ("partial", sum(1 for r in rows.values() if r["coverage"] == "partial")),
                            ("not_covered", sum(1 for r in rows.values() if r["coverage"] == "not covered")),
                            ("not_covered_list", [rid for rid, r in rows.items() if r["coverage"] == "not covered"])])
-    return OrderedDict([("summary", summary), ("requirements", rows)])
+    return OrderedDict([("corpora", list(corpora_in_scope)), ("summary", summary), ("requirements", rows)])
 
 def main():
     m03, h03 = load("examples/v0.3-composed/vectors.json")
@@ -405,7 +411,7 @@ def main():
         ("vectors", build_v04(m04))])
     corpora["evidence-pinning-rev8"] = OrderedDict([("manifest", "fixtures/evidence-pinning-fixtures-v2-rev8.json"), ("manifest_sha256", hr8), ("normative", True), ("status", "FINAL (rev8)"),
         ("requirement_documents", ["EP"]), ("external_documents", []),
-        ("checkers", ["fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs (published, same author as the generator)", "fixtures/evidence-pinning-fixture-generator-rev8.py (emitter validation)", "external: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py"]),
+        ("checkers", ["fixtures/evidence-pinning-fixture-crosscheck-rev8.mjs (published, same author as the generator; per its README not a conformance verifier: it checks roots, census and condition identifiers)", "fixtures/evidence-pinning-fixture-generator-rev8.py (emitter validation)", "external: babyblueviper1/preaction-governance-conformance@8e98c0e run_companion_corpus.py"]),
         ("vectors", build_rev8(mr8))])
     corpora["rule2"] = OrderedDict([("manifest", "conformance/vectors-rule2.json"), ("manifest_sha256", hr2), ("normative", False),
         ("label", "NOT NORMATIVE until reviewed and published (the manifest's own $comment)"),
@@ -451,7 +457,8 @@ def main():
     doc["coverage_rule"] = ("Coverage is recorded per vector and requirement only where an assertion is actually executed. "
         "covered: executed by a checker published with the corpus against the shipped file. "
         "partial: declared in the manifest and executed only by the emitter that produced it or by an external run, or the checker exercises part of the requirement. "
-        "not covered: no executed assertion. The reverse view takes the best coverage any vector gives a requirement.")
+        "not covered: no executed assertion. The reverse view takes the best coverage any vector gives a requirement within the corpora it names. "
+        "The rev8 cross-check is, in its own README's words, not a conformance verifier: it checks roots, census and condition identifiers, so it can give 'covered' only to root-construction rules and to the four rev8 discriminating vectors.")
     doc["not_counted"] = OrderedDict([
         ("v0.4-branch-vectors", "7 vectors on the unmerged v0.4 branch: not in the snapshot; deferred until merged"),
         ("rev5-rev7-fixtures", "fixtures/evidence-pinning-fixtures-v2-rev5|6|7.json: superseded by rev8; not corpora"),
