@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/TKCollective/tanilo-receipt-spec/mappings/receipt-verify-registry/mapping.schema.json",
+  "title": "Vector -> requirement mapping (receipt-verify methodology §2.7)",
+  "type": "object",
+  "required": ["mapping_kind", "methodology", "corpus_snapshot", "coverage_rule", "requirement_documents", "external_documents", "corpora", "reverse_view", "totals"],
+  "properties": {
+    "mapping_kind": { "const": "vector-requirement-mapping" },
+    "methodology": { "type": "object", "required": ["name", "axis", "version", "url"] },
+    "corpus_snapshot": { "type": "object", "required": ["repository", "commit"], "properties": { "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" } } },
+    "coverage_rule": { "type": "string" },
+    "requirement_documents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["title", "scope", "requirements"],
+        "properties": { "requirements": { "type": "object", "additionalProperties": { "type": "string" } } }
+      }
+    },
+    "external_documents": { "type": "object", "additionalProperties": { "type": "object", "required": ["title", "pinned", "note"] } },
+    "corpora": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["manifest", "manifest_sha256", "normative", "requirement_documents", "external_documents", "checkers", "vectors", "vector_count"],
+        "properties": {
+          "manifest_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "vector_count": { "type": "integer", "minimum": 1 },
+          "vectors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id"],
+              "properties": {
+                "id": { "type": "string" },
+                "requirements": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["requirement", "coverage", "checker", "assertion"],
+                    "properties": { "coverage": { "enum": ["covered", "partial", "not covered"] } }
+                  }
+                },
+                "external_requirements": { "type": "array", "items": { "type": "object", "required": ["requirement", "assertion"] } },
+                "status": { "enum": ["deferred"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "reverse_view": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["summary", "requirements"],
+        "properties": {
+          "requirements": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "required": ["text", "coverage", "vectors"],
+              "properties": { "coverage": { "enum": ["covered", "partial", "not covered"] } }
+            }
+          }
+        }
+      }
+    },
+    "totals": { "type": "object", "required": ["friday_priority", "also_accounted", "mapped_or_deferred"] }
+  }
+}
