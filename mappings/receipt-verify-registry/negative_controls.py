@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Negative controls for validate_mapping.py: three deliberately broken copies of
-mapping.json that the validator MUST reject, plus the real file, which it must
-accept. Exit 0 only when all four behave as expected.
+"""Negative controls for validate_mapping.py: deliberately broken copies of
+mapping.json that the validator MUST reject (an unlinked vector; zeroed -01 and
+mapping digests; a wrong snapshot commit; a missing audit source, alone and
+combined with an unassigned sentence or a deleted audit row; an audit source
+whose bytes do not match the recorded digest), plus the real file, which it
+must accept. Exit 0 only when every case behaves as expected.
 
     python3 mappings/receipt-verify-registry/negative_controls.py
 """
@@ -23,7 +26,27 @@ def wrong_commit(d):
     d["corpus_snapshot"]["commit"] = "0" * 40
     return d
 
+def missing_audit_source(d):
+    d["normative_audit"]["source"] = "mappings/receipt-verify-registry/cited/does-not-exist.txt"
+    return d
+def missing_source_unassigned(d):
+    d = missing_audit_source(d)
+    d["normative_audit"]["sentences"][5]["requirements"] = []      # the §4.1 IANA SHOULD row, unassigned
+    return d
+def missing_source_deleted_row(d):
+    d = missing_audit_source(d)
+    del d["normative_audit"]["sentences"][5]                       # the §4.1 IANA SHOULD row, deleted
+    return d
+def mismatched_audit_source(d):
+    d["cited_texts"]["D01"]["sha256"] = "1" * 64                   # recorded digest no longer matches the bytes
+    d["requirement_documents"]["D01"]["sha256"] = "1" * 64
+    return d
+
 CASES = [("real mapping.json (control)", lambda d: d, 0),
+         ("missing audit source", missing_audit_source, 1),
+         ("missing audit source + an unassigned sentence", missing_source_unassigned, 1),
+         ("missing audit source + a deleted audit row", missing_source_deleted_row, 1),
+         ("audit source present but its bytes do not match the recorded digest", mismatched_audit_source, 1),
          ("unlinked vector (no requirement link, not deferred)", unlinked, 1),
          ("zeroed -01 and mapping-document digests", zeroed_digests, 1),
          ("wrong corpus_snapshot.commit", wrong_commit, 1)]

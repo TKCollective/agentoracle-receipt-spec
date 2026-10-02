@@ -89,8 +89,10 @@ SHOULD NOT, REQUIRED or RECOMMENDED. `mapping.json` lists all 55 of them
 under `normative_audit`, each mapped to one or more requirement identifiers;
 10 are exercised by at least one vector (coverage covered or partial, all
 corpora) and 45 are unexercised. The generator refuses to run if a
-sentence is unassigned; the validator re-extracts from the cited bytes and
-fails if the list differs. Obligations added in revision 2 from this audit:
+sentence is unassigned; the validator requires the audit source to be the
+digest-checked `-01` cited text (same path as `cited_texts.D01`, bytes hashing
+to the recorded digest; a missing or mismatched source is a hard failure, never
+a skip), re-extracts from those bytes and fails if the list differs. Obligations added in revision 2 from this audit:
 `D01-4.1-iana-alg` (§4.1 SHOULD follow the IANA JOSE Algorithms registry),
 `D01-6.1-reject-expired` (§6.1 table: MUST reject expired signatures),
 `D01-9.1-no-mask-env-halt` (§9.1 MUST NOT mask an environment.* HALT),
@@ -118,7 +120,7 @@ files; the recorded values are not copied from anywhere else.
 - `generate_mapping.py` — builds `mapping.json` from the manifests at the snapshot commit (`git show`); every count comes from the files, and the mapping judgments and the audit assignments are the tables in this script.
 - `validate_mapping.py` — independent checks: manifests read at `corpus_snapshot.commit`, counts and ids, identifiers against the registry, link-or-defer per vector, the reverse view required to EQUAL the forward view scoped to the corpora each view names (both counts for `-01`), digests recomputed from the cited bytes and from the snapshot, the normative audit re-extracted, and the schema (when `jsonschema` is installed). Takes `--mapping PATH`.
 - `normative_audit.py` — the sentence extractor shared by the two scripts.
-- `negative_controls.py` — three broken copies the validator must reject (an unlinked vector; zeroed `-01` and mapping digests; a wrong snapshot commit) plus the real file it must accept.
+- `negative_controls.py` — seven broken copies the validator must reject (an unlinked vector; zeroed `-01` and mapping digests; a wrong snapshot commit; a missing audit source, alone, with an unassigned sentence and with a deleted audit row; an audit source whose bytes do not match the recorded digest) plus the real file it must accept.
 - `cited/` — the cited bytes (above).
 
 ```

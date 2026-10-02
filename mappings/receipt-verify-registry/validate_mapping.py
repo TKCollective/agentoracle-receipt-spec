@@ -14,9 +14,12 @@ texts and the schema. Independent of the generator. It checks that
   5. the digests recorded for the cited -01 text and the mapping document are
      recomputed from the cited bytes (cited_texts[].path), and the evidence-pinning
      drafts' digests from their bytes at the snapshot commit;
-  6. the normative audit lists exactly the sentences normative_audit.py extracts
-     from the cited -01 bytes, each mapped to at least one registry identifier,
-     with exercised recomputed from the reverse view;
+  6. the normative audit's source is the digest-checked D01 cited text (same path
+     as cited_texts.D01, bytes hashing to the recorded digest; a missing or
+     mismatched source is a hard failure, never a skip), and the audit lists
+     exactly the sentences normative_audit.py extracts from those bytes, each
+     mapped to at least one registry identifier, with exercised recomputed from
+     the reverse view;
   7. mapping.json conforms to mapping.schema.json (jsonschema package; this script
      says so when it is not installed and the structural checks stand alone).
 Exit code 0 only when every check holds.
@@ -142,9 +145,24 @@ if len(COMMIT) != 40 or any(ch not in "0123456789abcdef" for ch in COMMIT): prob
 aud = doc.get("normative_audit")
 if not aud: problems.append("normative_audit missing")
 else:
+    # Fail closed: the audit source MUST be the digest-checked D01 cited text. A
+    # source that is not that path, is missing, or whose bytes do not hash to the
+    # recorded digest is a hard failure; the audit is never silently skipped.
+    d01_cited = doc["cited_texts"].get("D01", {})
     p = os.path.join(ROOT, aud["source"])
-    if os.path.exists(p):
-        expected = extract_normative(open(p, encoding="utf-8").read())
+    audit_bytes = None
+    if aud["source"] != d01_cited.get("path"):
+        problems.append(f"normative_audit.source {aud['source']!r} is not cited_texts.D01.path {d01_cited.get('path')!r}")
+    elif not os.path.exists(p):
+        problems.append(f"normative_audit.source {aud['source']} is missing: the audit cannot be checked (hard failure)")
+    else:
+        with open(p, "rb") as f: audit_bytes = f.read()
+        h = hashlib.sha256(audit_bytes).hexdigest()
+        if h != d01_cited.get("sha256") or h != doc["requirement_documents"]["D01"].get("sha256"):
+            problems.append(f"normative_audit.source bytes hash to {h}, not the recorded D01 digest; audit not trusted (hard failure)")
+            audit_bytes = None
+    if audit_bytes is not None:
+        expected = extract_normative(audit_bytes.decode("utf-8"))
         listed = [(r["section"], r["text"]) for r in aud["sentences"]]
         if listed != expected: problems.append(f"normative_audit: listed sentences differ from the extraction ({len(listed)} listed, {len(expected)} extracted)")
         d01 = doc["reverse_view"]["D01"]["requirements"]
