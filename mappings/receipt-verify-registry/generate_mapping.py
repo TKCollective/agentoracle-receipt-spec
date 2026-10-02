@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Vector -> requirement mapping for the receipt-verify registry (methodology v0.4.5 §2.7).
 
-Reads the vector manifests at the corpus snapshot (this checkout), attaches the
+Reads the vector manifests at the corpus snapshot commit (git show, not the
+working tree), attaches the
 per-vector mapping judgments recorded below, derives the reverse view
 (requirement -> vectors) from the forward view, checks every count against the
 manifests, and writes mapping.json. Run from the repository root:
@@ -20,17 +21,33 @@ Coverage vocabulary (per vector x requirement):
 Coverage is recorded only where an assertion is actually checked; a vector that
 merely contains a field is not coverage of the rule about that field.
 """
-import hashlib, json, os, sys
+import hashlib, json, os, subprocess, sys
 from collections import OrderedDict
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from normative_audit import extract as extract_normative
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mapping.json")
 SNAPSHOT = "cbba94b7576cf2aec08c70aeb2899fdfa4d35c66"
 
+def snapshot_bytes(rel, commit=SNAPSHOT):
+    """The file's bytes at the corpus snapshot commit, via git show. Never the working tree."""
+    r = subprocess.run(["git", "show", f"{commit}:{rel}"], cwd=ROOT, capture_output=True)
+    if r.returncode != 0:
+        raise SystemExit(f"git show {commit}:{rel} failed: {r.stderr.decode().strip()}")
+    return r.stdout
+
 def load(rel):
-    with open(os.path.join(ROOT, rel), "rb") as f:
-        data = f.read()
+    data = snapshot_bytes(rel)
     return json.loads(data), hashlib.sha256(data).hexdigest()
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+CITED = OrderedDict([
+    ("D01", OrderedDict([("path", "mappings/receipt-verify-registry/cited/draft-krausz-verification-state-01.txt"), ("url", "https://www.ietf.org/archive/id/draft-krausz-verification-state-01.txt"), ("fetched", "2026-10-01")])),
+    ("MAP", OrderedDict([("path", "mappings/receipt-verify-registry/cited/agentoracle-v0.3-2026-05-30.json"), ("url", "https://agentoracle.co/mappings/agentoracle-v0.3-2026-05-30.json"), ("fetched", "2026-10-01")])),
+])
+def cited_sha256(key):
+    with open(os.path.join(ROOT, CITED[key]["path"]), "rb") as f: return hashlib.sha256(f.read()).hexdigest()
 
 # ── requirement registries ──────────────────────────────────────────
 # Identifiers are stable strings a reader can resolve in the cited text.
@@ -46,6 +63,7 @@ DOCS["D01"] = {
         ("D01-3.2-env-ordering", "§3.2: environment.* constraints MUST short-circuit before verification.* constraints"),
         ("D01-4.1-jws", "§4.1: receipts MUST be JWS; a relying party MUST accept compact and JSON (flattened) serializations"),
         ("D01-4.1-alg", "§4.1: a conforming implementation MUST accept both EdDSA and ES256"),
+        ("D01-4.1-iana-alg", "§4.1: other algorithms are optional and SHOULD follow the IANA JOSE Algorithms registry (overlaps D01-4.1-alg: the accepted set is EdDSA and ES256 plus registry-listed options)"),
         ("D01-4.1-kid", "§4.1: kid MUST resolve to a key in the issuer's published JWKS"),
         ("D01-4.1-typ", "§4.1: typ is verification-receipt+jws"),
         ("D01-4.2-v_verdict", "§4.2: v_verdict REQUIRED, one of supported | refuted | unverifiable | unknown"),
@@ -68,7 +86,7 @@ DOCS["D01"] = {
         ("D01-4.4-v_claim", "§4.4: the verified claim MUST be bound via v_claim (text, or hash REQUIRED when text is omitted)"),
         ("D01-4.5-mapping-hash-present", "§4.5: v_gate_mapping_hash MUST be present in all conforming receipts"),
         ("D01-4.6-old-mapping-verifiable", "§4.6: a receipt issued under an older mapping MUST remain verifiable as correct under that mapping"),
-        ("D01-4.6-mapping-immutable", "§4.6: publishers MUST treat published mappings as immutable; new rules ship under new identifiers"),
+        ("D01-4.6-mapping-immutable", "§4.6: publishers MUST treat published mappings as immutable; new rules ship under new identifiers; errata MAY be appended to a published mapping's metadata but the normative rule tables MUST NOT change after first publication"),
         ("D01-5.1-table-shape", "§5.1: the binary act/halt shape derived from the canonical recommendation MUST be preserved"),
         ("D01-5.1-row-1", "§5.1 Table 2 row 1: supported, >= threshold, resilient -> confident_supported -> act"),
         ("D01-5.1-row-2", "§5.1 Table 2 row 2: supported, >= threshold, not_checked -> un_probed_not_cleared -> halt"),
@@ -81,22 +99,104 @@ DOCS["D01"] = {
         ("D01-5.2-uncertainty-halts", "§5.2: un-probed adversarial state is not equivalent to resilient; uncertainty MUST halt (un_probed_not_cleared)"),
         ("D01-5.2-no-foreign-threshold", "§5.2: relying parties MUST NOT treat a receipt as conformant under a mapping with a different threshold than that mapping states"),
         ("D01-5.3-fail-closed", "§5.3: missing, malformed, expired, signature-invalid or unresolvable-mapping receipts MUST be treated as halt; implementations MUST NOT default to act"),
-        ("D01-6.2-stale-signature", "§6.2: a stale signature makes the receipt invalid; relying party MUST treat as halt"),
+        ("D01-6.1-reject-expired", "§6.1 Table 3, signature axis: the verifier MUST reject expired signatures (overlaps D01-4.3-7-time, D01-6.2-stale-signature, D01-9.2-replay and the 'expired' case of D01-5.3-fail-closed)"),
+        ("D01-6.2-stale-signature", "§6.2: a stale signature makes the receipt invalid; relying party MUST treat as halt (overlaps D01-6.1-reject-expired)"),
         ("D01-6.2-stale-calibration", "§6.2: stale calibration SHOULD be re-evaluated; issuers SHOULD publish recalibration cadence"),
         ("D01-6.2-stale-evidence", "§6.2: stale evidence SHOULD be re-evaluated and MUST NOT be honored as a gate signal for new actions"),
         ("D01-7.1-publish-anchors", "§7.1: verifier issuers MUST publish calibration anchors (the listed items)"),
         ("D01-7.1-harness", "§7.1: verifier issuers SHOULD publish a reference reproduction harness under a permissive license"),
         ("D01-7.2-cadence", "§7.2: issuers SHOULD publish a recalibration cadence; v_calibration.valid_until SHOULD reflect it"),
         ("D01-7.2-surface-stale", "§7.2: relying parties consuming receipts with stale calibration SHOULD log and surface the staleness rather than silently accept"),
-        ("D01-9.1-ordering-holds", "§9.1: the §3.2 ordering MUST hold when composed with environment.*"),
+        ("D01-9.1-ordering-holds", "§9.1: the §3.2 ordering MUST hold when composed with environment.* (overlaps D01-3.2-env-ordering)"),
+        ("D01-9.1-no-mask-env-halt", "§9.1: a verification.* ACT outcome MUST NOT mask an environment.* HALT outcome; an environment.* halt is final regardless of the verification.* state (overlaps D01-3.2-env-ordering, D01-9.1-ordering-holds)"),
+        ("D01-9.1-env-terminal-first", "§9.1: implementations MUST evaluate environment.* to its terminal state before evaluating any verification.* constraint, and a verification.* state SHALL NOT be reached if environment.* has already halted (overlaps D01-3.2-env-ordering)"),
         ("D01-9.2-key-rotation", "§9.2: issuers MUST rotate JWKS keys on a published cadence; RPs MUST honor key revocation lists where published"),
         ("D01-9.2-replay", "§9.2: RPs MUST verify iat and exp against current time"),
         ("D01-9.2-sample-harness", "§9.2 (confidence inflation): RPs SHOULD periodically sample receipts against the issuer's published harness"),
         ("D01-9.2-downgrade", "§9.2: a relying party MUST NOT accept a v0.3-spec receipt against a v0.4-spec gate"),
-        ("D01-9.2-mapping-tampering", "§9.2: receipts MUST bind to a content-addressed mapping; mapping documents MUST be hosted with a stable digest"),
+        ("D01-9.2-mapping-tampering", "§9.2: receipts MUST bind to a content-addressed mapping; mapping documents MUST be hosted with a stable, independently verifiable digest; verifier implementations MUST verify the fetched document's SHA-256 against v_gate_mapping_hash before use and a mismatch MUST halt (the same check as D01-4.3-2-mapping-digest)"),
+        ("D01-9.2-unverifiable-mapping-hash-malformed", "§9.2: a relying party that cannot independently verify the mapping document's hash MUST treat the receipt as malformed (overlaps the 'mapping ID cannot be resolved' case of D01-5.3-fail-closed and D01-4.3-2-mapping-digest)"),
         ("D01-10-well-known-jwks", "§10: verification issuers using HTTPS SHOULD publish their JWKS at /.well-known/jwks.json per RFC 7517 §4.7 conventions"),
     ]),
+    "requirement_notes": OrderedDict([
+        ("D01-4.1-typ", "Finding 1 (Michael Msebenzi, review of b1da800): the v0.3 fixtures use typ application/vnd.verification.v0.3+composed+jws and the v0.4 fixtures (all 12 protected headers) use application/vnd.verification.v0.4+composed+jws; neither matches -01 §4.1 (verification-receipt+jws). No published checker asserts typ, so the requirement is not covered, and the corpus as shipped would not satisfy it."),
+    ]),
 }
+# ── normative audit of -01 §§3-7, 9, 10: every MUST/SHOULD/SHALL/REQUIRED/RECOMMENDED
+# sentence extracted from the cited bytes (normative_audit.py) is assigned here,
+# keyed by (section, first 48 characters). An unassigned sentence stops generation.
+AUDIT_ASSIGN = [
+    ("3.2", "All constraints MUST resolve to act", ["D01-3.2-conjunction"]),
+    ("3.2", "Ordering with environment.*:* environment.* constr", ["D01-3.2-env-ordering"]),
+    ("4.1", "Verification receipts MUST be issued as JSON Web S", ["D01-4.1-jws"]),
+    ("4.1", "A relying party MUST accept both serializations.", ["D01-4.1-jws"]),
+    ("4.1", "alg: A conforming implementation MUST accept both", ["D01-4.1-alg"]),
+    ("4.1", "Other algorithms are optional and SHOULD follow th", ["D01-4.1-iana-alg"]),
+    ("4.1", "kid: MUST resolve to a key in the issuer's publish", ["D01-4.1-kid"]),
+    ("4.2", "v_verdict (string, REQUIRED)", ["D01-4.2-v_verdict"]),
+    ("4.2", "v_confidence (number, REQUIRED)", ["D01-4.2-v_confidence"]),
+    ("4.2", "v_adversarial_result (string, REQUIRED)", ["D01-4.2-v_adversarial_result"]),
+    ("4.2", "v_recommendation (string, REQUIRED)", ["D01-4.2-v_recommendation"]),
+    ("4.2", "v_gate (string, REQUIRED)", ["D01-4.2-v_gate"]),
+    ("4.2", "v_gate_mapping (string, REQUIRED)", ["D01-4.2-v_gate_mapping"]),
+    ("4.2", "v_gate_mapping_hash (string, REQUIRED)", ["D01-4.2-v_gate_mapping_hash"]),
+    ("4.2", "MUST be present in every receipt.", ["D01-4.2-v_gate_mapping_hash", "D01-4.5-mapping-hash-present"]),
+    ("4.2", "Receipts MUST bind to a content-addressed mapping;", ["D01-4.2-v_gate_mapping_hash", "D01-9.2-mapping-tampering"]),
+    ("4.2", "iss (REQUIRED), sub (RECOMMENDED), iat (REQUIRED)", ["D01-4.2-jwt-claims"]),
+    ("4.3", "A relying party verifying a receipt MUST execute t", ["D01-4.3-sequence", "D01-4.3-8-mismatch-halts"]),
+    ("4.3", "MUST verify the SHA-256 digest of the fetched docu", ["D01-4.3-2-mapping-digest"]),
+    ("4.4", "The verified claim MUST be bound to the receipt vi", ["D01-4.4-v_claim"]),
+    ("4.4", "\"v_claim\": {", ["D01-4.4-v_claim"]),
+    ("4.5", "This field MUST be present in all conforming recei", ["D01-4.5-mapping-hash-present"]),
+    ("4.6", "MUST remain verifiable as _correct-under-v0.3.0_", ["D01-4.6-old-mapping-verifiable"]),
+    ("4.6", "Mapping document publishers MUST treat published m", ["D01-4.6-mapping-immutable"]),
+    ("4.6", "Errata (typographical corrections only) MAY be app", ["D01-4.6-mapping-immutable"]),
+    ("5.1", "Future mappings MAY tighten or extend this table;", ["D01-5.1-table-shape"]),
+    ("5.2", "This ensures that the threshold is auditable, vers", ["D01-5.2-threshold-from-mapping"]),
+    ("5.2", "Per the fail- closed property, uncertainty MUST ha", ["D01-5.2-uncertainty-halts"]),
+    ("5.2", "They MUST NOT treat a receipt as conformant under", ["D01-5.2-no-foreign-threshold"]),
+    ("5.3", "If a receipt is missing, malformed, expired, signa", ["D01-5.3-fail-closed"]),
+    ("5.3", "Implementations MUST NOT default to act under any", ["D01-5.3-fail-closed"]),
+    ("6.1", "Signature | exp | Key rotation; verifier MUST reje", ["D01-6.1-reject-expired"]),
+    ("6.2", "Stale signature* --- Receipt is invalid; relying p", ["D01-6.2-stale-signature"]),
+    ("6.2", "Stale calibration* --- Receipt SHOULD be re-evalua", ["D01-6.2-stale-calibration"]),
+    ("6.2", "Verifier issuers SHOULD publish recalibration cade", ["D01-6.2-stale-calibration", "D01-7.2-cadence"]),
+    ("6.2", "Stale evidence* --- Receipt SHOULD be re-evaluated", ["D01-6.2-stale-evidence"]),
+    ("6.2", "MAY be honored for retrospective audit purposes", ["D01-6.2-stale-evidence"]),
+    ("7.1", "Verifier issuers MUST publish:", ["D01-7.1-publish-anchors"]),
+    ("7.1", "Verifier issuers SHOULD publish a reference reprod", ["D01-7.1-harness"]),
+    ("7.2", "Verifier issuers SHOULD publish a recalibration ca", ["D01-7.2-cadence"]),
+    ("7.2", "The v_calibration.valid_until field in receipts SH", ["D01-7.2-cadence"]),
+    ("7.2", "Relying parties consuming receipts with stale cali", ["D01-7.2-surface-stale"]),
+    ("9.1", "When verification.* composes alongside environment", ["D01-9.1-ordering-holds"]),
+    ("9.1", "A verification.* ACT outcome MUST NOT mask an envi", ["D01-9.1-no-mask-env-halt"]),
+    ("9.1", "Implementations MUST evaluate environment.* to its", ["D01-9.1-env-terminal-first"]),
+    ("9.2", "Key compromise.* Verifier issuers MUST rotate JWKS", ["D01-9.2-key-rotation"]),
+    ("9.2", "RPs MUST honor key revocation lists where publishe", ["D01-9.2-key-rotation"]),
+    ("9.2", "RPs MUST verify both against current time, subject", ["D01-9.2-replay"]),
+    ("9.2", "RPs SHOULD periodically sample receipts against th", ["D01-9.2-sample-harness"]),
+    ("9.2", "Downgrade attacks.* A future relying party MUST NO", ["D01-9.2-downgrade"]),
+    ("9.2", "Mapping document tampering.* Receipts MUST bind to", ["D01-9.2-mapping-tampering", "D01-4.2-v_gate_mapping_hash"]),
+    ("9.2", "Mapping documents MUST be hosted such that the SHA", ["D01-9.2-mapping-tampering"]),
+    ("9.2", "Verifier implementations MUST verify the SHA-256 d", ["D01-9.2-mapping-tampering", "D01-4.3-2-mapping-digest"]),
+    ("9.2", "A relying party that cannot independently verify t", ["D01-9.2-unverifiable-mapping-hash-malformed"]),
+    ("10", "Well-known URI:* Verification issuers using HTTPS", ["D01-10-well-known-jwks"]),
+]
+def build_audit(text, reqs):
+    sentences = extract_normative(text)
+    out, unassigned, seen = [], [], set()
+    for n, (sec, sent) in enumerate(sentences, 1):
+        matches = [(i, ids) for i, (asec, pre, ids) in enumerate(AUDIT_ASSIGN) if asec == sec and sent.startswith(pre)]
+        if len(matches) != 1: unassigned.append(f"[{sec}] {sent} (matches: {len(matches)})"); ids = None
+        else:
+            seen.add(matches[0][0]); ids = matches[0][1]
+            for i in ids: assert i in reqs, i
+        out.append(OrderedDict([("n", n), ("section", sec), ("text", sent), ("requirements", ids or [])]))
+    stale = [AUDIT_ASSIGN[i][:2] for i in range(len(AUDIT_ASSIGN)) if i not in seen]
+    if unassigned or stale:
+        raise SystemExit("normative audit: unassigned sentences: %r; stale table keys: %r" % (unassigned, stale))
+    return out
+
 DOCS["RMT"] = {
     "title": "tanilo-receipt-spec README, section 'Mycelium Trails'",
     "url": "https://github.com/TKCollective/tanilo-receipt-spec/blob/196df22b255e7173d4eb6b20e833cc4e8ae6d35d/README.md#mycelium-trails",
@@ -248,7 +348,10 @@ def build_v04(manifest):
         out.append(composed_vector(v, V04, reqs, ext))
     for v in manifest["reject_vectors"]:
         ext = [{"requirement": "EXT-delegation-chain-ref-v1", "assertion": {"comp-r05": "scope widening between hops rejected (delegation_chain_ref_scope_widening)", "comp-r06": "hops[0].delegatee != hops[1].delegator rejected (delegation_chain_ref_chain_break)"}[v["id"]]}]
-        out.append(composed_vector(v, V04, [], ext, ["no in-scope requirement: the decisive rule is third-party (delegation-chain-ref-v1 @16e140a)"]))
+        d = composed_vector(v, V04, [], ext)
+        d["status"] = "deferred"
+        d["reason"] = "no in-scope requirement: the decisive rule is third-party (delegation-chain-ref-v1 @16e140a). The published checker executes it (see external_requirements); the requirement text is outside this mapping's document set."
+        out.append(d)
     return out
 
 RULE2_CHECK = "conformance/check.mjs (a second, separate derivation of the rule table)"
@@ -273,6 +376,8 @@ def build_rule2(manifest):
         d["external_requirements"] = []
         if v["id"] == "d1-no-receipt":
             d["external_requirements"] = [{"requirement": "EXT-service-integrity-D1", "assertion": "not executed: check.mjs skips inputs carrying members_evaluated (service-level, not a derivation)"}]
+            d["status"] = "deferred"
+            d["reason"] = "service-level rule (EXT-service-integrity-D1), not a format requirement in any in-scope text; conformance/check.mjs skips it. Declared, not run: no published checker executes this vector."
             d["notes"] = ["declared, not run: no published checker executes this vector"]
         out.append(d)
     return out
@@ -361,8 +466,23 @@ def build_leaf(manifest):
         ("external_requirements", [{"requirement": "EXT-delegation-chain-ref-v1", "assertion": "scope_mismatch_at_leaf"}])])]
 
 # ── assembly ────────────────────────────────────────────────────────
-def reverse_view(doc_id, vectors_by_corpus, corpora_in_scope):
+def _best(hits):
+    if any(h["coverage"] == "covered" for h in hits): return "covered"
+    if any(h["coverage"] == "partial" for h in hits): return "partial"
+    return "not covered"
+
+def _summary(rows, key="coverage"):
+    return OrderedDict([("requirements", len(rows)),
+                        ("covered", sum(1 for r in rows.values() if r[key] == "covered")),
+                        ("partial", sum(1 for r in rows.values() if r[key] == "partial")),
+                        ("not_covered", sum(1 for r in rows.values() if r[key] == "not covered")),
+                        ("not_covered_list", [rid for rid, r in rows.items() if r[key] == "not covered"])])
+
+def reverse_view(doc_id, vectors_by_corpus, corpora_in_scope, normative_only=None):
+    """normative_only: the subset of corpora_in_scope that is normative; when given,
+    every row also carries coverage_excluding_not_normative and the view a second summary."""
     reqs = DOCS[doc_id]["requirements"]
+    notes = DOCS[doc_id].get("requirement_notes", {})
     rows = OrderedDict()
     for rid in reqs:
         hits = []
@@ -372,16 +492,17 @@ def reverse_view(doc_id, vectors_by_corpus, corpora_in_scope):
                 for r in v.get("requirements", []):
                     if r["requirement"] == rid:
                         hits.append(OrderedDict([("corpus", corpus), ("vector", v["id"]), ("coverage", r["coverage"])]))
-        best = "not covered"
-        if any(h["coverage"] == "covered" for h in hits): best = "covered"
-        elif any(h["coverage"] == "partial" for h in hits): best = "partial"
-        rows[rid] = OrderedDict([("text", reqs[rid]), ("coverage", best), ("vectors", hits)])
-    summary = OrderedDict([("requirements", len(rows)),
-                           ("covered", sum(1 for r in rows.values() if r["coverage"] == "covered")),
-                           ("partial", sum(1 for r in rows.values() if r["coverage"] == "partial")),
-                           ("not_covered", sum(1 for r in rows.values() if r["coverage"] == "not covered")),
-                           ("not_covered_list", [rid for rid, r in rows.items() if r["coverage"] == "not covered"])])
-    return OrderedDict([("corpora", list(corpora_in_scope)), ("summary", summary), ("requirements", rows)])
+        row = OrderedDict([("text", reqs[rid]), ("coverage", _best(hits))])
+        if normative_only is not None:
+            row["coverage_excluding_not_normative"] = _best([h for h in hits if h["corpus"] in normative_only])
+        if rid in notes: row["note"] = notes[rid]
+        row["vectors"] = hits
+        rows[rid] = row
+    view = OrderedDict([("corpora", list(corpora_in_scope)), ("summary", _summary(rows))])
+    if normative_only is not None:
+        view["summary_excluding_not_normative"] = OrderedDict([("corpora", list(normative_only))] + list(_summary(rows, "coverage_excluding_not_normative").items()))
+    view["requirements"] = rows
+    return view
 
 def main():
     m03, h03 = load("examples/v0.3-composed/vectors.json")
@@ -390,12 +511,16 @@ def main():
     mr8, hr8 = load("fixtures/evidence-pinning-fixtures-v2-rev8.json")
     mlf, hlf = load("examples/conformance/delegation-chain-ref/leaf-screen-halt/vectors.json")
     for key in ("rev2", "rev4"):
-        p = DOCS["EP"]["texts"][key]["path"]
-        with open(os.path.join(ROOT, p), "rb") as f: DOCS["EP"]["texts"][key]["sha256"] = hashlib.sha256(f.read()).hexdigest()
-    # pinned-digest checks
+        DOCS["EP"]["texts"][key]["sha256"] = hashlib.sha256(snapshot_bytes(DOCS["EP"]["texts"][key]["path"])).hexdigest()
+    # pinned-digest checks, against the bytes at the snapshot commit
     for key, t in DOCS["EP"]["texts"].items():
-        with open(os.path.join(ROOT, t["path"]), "rb") as f: actual = hashlib.sha256(f.read()).hexdigest()
+        actual = hashlib.sha256(snapshot_bytes(t["path"])).hexdigest()
         assert actual == t["sha256"], f"{key}: sha256 {actual} != recorded {t['sha256']}"
+    # cited texts: the recorded digests are recomputed from the vendored bytes
+    for key in ("D01", "MAP"):
+        actual = cited_sha256(key)
+        assert actual == DOCS[key]["sha256"], f"{key}: cited bytes sha256 {actual} != recorded {DOCS[key]['sha256']}"
+        CITED[key]["sha256"] = actual
     assert mr8["header"]["spec_bases"]["review_draft_sha256"] == DOCS["EP"]["texts"]["review-draft"]["sha256"]
     for r in ("5", "6", "7", "8"):
         assert mr8["header"]["spec_bases"][f"rev{r}_sha256"] == DOCS["EP"]["texts"][f"rev{r}"]["sha256"], r
@@ -433,8 +558,8 @@ def main():
 
     vectors_by_corpus = OrderedDict((k, c["vectors"]) for k, c in corpora.items())
     reverse = OrderedDict()
-    reverse["D01"] = reverse_view("D01", vectors_by_corpus, ["v0.3-composed", "v0.4-composed", "rule2"])
-    reverse["D01"]["note"] = "rule2 vectors count here but are labelled NOT NORMATIVE in their manifest; a reader wanting the normative-only view removes them"
+    reverse["D01"] = reverse_view("D01", vectors_by_corpus, ["v0.3-composed", "v0.4-composed", "rule2"], normative_only=["v0.3-composed", "v0.4-composed"])
+    reverse["D01"]["note"] = "two counts: summary counts every corpus including rule2, which its manifest labels NOT NORMATIVE; summary_excluding_not_normative and each row's coverage_excluding_not_normative count only the normative corpora"
     reverse["RMT"] = reverse_view("RMT", vectors_by_corpus, ["v0.3-composed", "v0.4-composed"])
     reverse["MAP"] = reverse_view("MAP", vectors_by_corpus, ["rule2"])
     reverse["MAP"]["note"] = "exercised only by the NOT NORMATIVE rule2 set"
@@ -453,7 +578,8 @@ def main():
     doc["methodology"] = OrderedDict([("name", "Agent Receipt Conformance — Grading Methodology"), ("axis", "§2.7 Vector requirement mapping"), ("version", "v0.4.5-draft (§2.7 unchanged from v0.4.1 per its editor)"),
         ("url", "https://github.com/LembaGang/receipt-verify/blob/11d520880d7b3a2647b04d09d84d692c94cc4368/registry/methodology/v0.4.5-draft.md")])
     doc["corpus_snapshot"] = OrderedDict([("repository", "TKCollective/tanilo-receipt-spec"), ("commit", SNAPSHOT)])
-    doc["prepared"] = OrderedDict([("by", "Joe Krausz, TK Collective LLC"), ("date", "2026-09-30"), ("for", "Michael Msebenzi (headlessoracle), receipt-verify registry")])
+    doc["prepared"] = OrderedDict([("by", "Joe Krausz, TK Collective LLC"), ("date", "2026-09-30"), ("revised", "2026-10-01 (mapping-v2, after Michael Msebenzi's review of b1da800)"), ("for", "Michael Msebenzi (headlessoracle), receipt-verify registry")])
+    doc["cited_texts"] = CITED
     doc["coverage_rule"] = ("Coverage is recorded per vector and requirement only where an assertion is actually executed. "
         "covered: executed by a checker published with the corpus against the shipped file. "
         "partial: declared in the manifest and executed only by the emitter that produced it or by an external run, or the checker exercises part of the requirement. "
@@ -465,12 +591,26 @@ def main():
         ("rev8-known-conflict", "4 rev8 positive fixtures omit snippet_sha256 on unpinned entries, which -03 §5.3.2 requires present; noted per vector; a repaired rev9 is not yet published"),
     ])
     doc["requirement_documents"] = DOCS
+    with open(os.path.join(ROOT, CITED["D01"]["path"]), encoding="utf-8") as f: d01_text = f.read()
+    audit_rows = build_audit(d01_text, DOCS["D01"]["requirements"])
     doc["external_documents"] = EXTERNAL
     doc["corpora"] = corpora
     doc["totals"] = OrderedDict([("friday_priority", sum(corpora[k]["vector_count"] for k in ("v0.3-composed", "v0.4-composed", "evidence-pinning-rev8"))),
                                  ("also_accounted", corpora["rule2"]["vector_count"] + corpora["leaf-screen-halt"]["vector_count"]),
                                  ("mapped_or_deferred", sum(c["vector_count"] for c in corpora.values()))])
     doc["reverse_view"] = reverse
+    # normative audit: every MUST/SHOULD/SHALL/REQUIRED/RECOMMENDED sentence of -01 §§3-7, 9, 10,
+    # with the requirement(s) it is mapped to and whether any vector exercises it
+    for row in audit_rows:
+        covs = [reverse["D01"]["requirements"][i]["coverage"] for i in row["requirements"]]
+        row["exercised"] = any(c != "not covered" for c in covs)
+    doc["normative_audit"] = OrderedDict([
+        ("document", "D01"), ("source", CITED["D01"]["path"]), ("sections", ["3", "4", "5", "6", "7", "9", "10"]),
+        ("keywords", ["MUST", "MUST NOT", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "REQUIRED", "RECOMMENDED"]),
+        ("rule", "every sentence carrying one of the keywords is listed with the requirement identifiers it is mapped to; exercised is true when at least one of those requirements has coverage covered or partial in the reverse view (all corpora), false when every one is not covered (unexercised)"),
+        ("summary", OrderedDict([("sentences", len(audit_rows)), ("exercised", sum(1 for r in audit_rows if r["exercised"])), ("unexercised", sum(1 for r in audit_rows if not r["exercised"]))])),
+        ("sentences", audit_rows)])
+    doc["totals"]["deferred"] = sum(1 for c in corpora.values() for v in c["vectors"] if v.get("status") == "deferred")
     with open(OUT, "w") as f:
         json.dump(doc, f, indent=2, ensure_ascii=False); f.write("\n")
     print("wrote", os.path.relpath(OUT, ROOT))

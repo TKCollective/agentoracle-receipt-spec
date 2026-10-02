@@ -14,7 +14,22 @@
   "prepared": {
     "by": "Joe Krausz, TK Collective LLC",
     "date": "2026-09-30",
+    "revised": "2026-10-01 (mapping-v2, after Michael Msebenzi's review of b1da800)",
     "for": "Michael Msebenzi (headlessoracle), receipt-verify registry"
+  },
+  "cited_texts": {
+    "D01": {
+      "path": "mappings/receipt-verify-registry/cited/draft-krausz-verification-state-01.txt",
+      "url": "https://www.ietf.org/archive/id/draft-krausz-verification-state-01.txt",
+      "fetched": "2026-10-01",
+      "sha256": "22c5ce262bdf4e63ef538a308e7a8455e93c4143b9e1726b7b64720615d516db"
+    },
+    "MAP": {
+      "path": "mappings/receipt-verify-registry/cited/agentoracle-v0.3-2026-05-30.json",
+      "url": "https://agentoracle.co/mappings/agentoracle-v0.3-2026-05-30.json",
+      "fetched": "2026-10-01",
+      "sha256": "0a78263976790df6e76cd9f3f441bf5a3b5c3a82e346b5aca43e49626881d7b0"
+    }
   },
   "coverage_rule": "Coverage is recorded per vector and requirement only where an assertion is actually executed. covered: executed by a checker published with the corpus against the shipped file. partial: declared in the manifest and executed only by the emitter that produced it or by an external run, or the checker exercises part of the requirement. not covered: no executed assertion. The reverse view takes the best coverage any vector gives a requirement within the corpora it names. The rev8 cross-check is, in its own README's words, not a conformance verifier: it checks roots, census and condition identifiers, so it can give 'covered' only to root-construction rules and to the four rev8 discriminating vectors.",
   "not_counted": {
@@ -34,6 +49,7 @@
         "D01-3.2-env-ordering": "§3.2: environment.* constraints MUST short-circuit before verification.* constraints",
         "D01-4.1-jws": "§4.1: receipts MUST be JWS; a relying party MUST accept compact and JSON (flattened) serializations",
         "D01-4.1-alg": "§4.1: a conforming implementation MUST accept both EdDSA and ES256",
+        "D01-4.1-iana-alg": "§4.1: other algorithms are optional and SHOULD follow the IANA JOSE Algorithms registry (overlaps D01-4.1-alg: the accepted set is EdDSA and ES256 plus registry-listed options)",
         "D01-4.1-kid": "§4.1: kid MUST resolve to a key in the issuer's published JWKS",
         "D01-4.1-typ": "§4.1: typ is verification-receipt+jws",
         "D01-4.2-v_verdict": "§4.2: v_verdict REQUIRED, one of supported | refuted | unverifiable | unknown",
@@ -56,7 +72,7 @@
         "D01-4.4-v_claim": "§4.4: the verified claim MUST be bound via v_claim (text, or hash REQUIRED when text is omitted)",
         "D01-4.5-mapping-hash-present": "§4.5: v_gate_mapping_hash MUST be present in all conforming receipts",
         "D01-4.6-old-mapping-verifiable": "§4.6: a receipt issued under an older mapping MUST remain verifiable as correct under that mapping",
-        "D01-4.6-mapping-immutable": "§4.6: publishers MUST treat published mappings as immutable; new rules ship under new identifiers",
+        "D01-4.6-mapping-immutable": "§4.6: publishers MUST treat published mappings as immutable; new rules ship under new identifiers; errata MAY be appended to a published mapping's metadata but the normative rule tables MUST NOT change after first publication",
         "D01-5.1-table-shape": "§5.1: the binary act/halt shape derived from the canonical recommendation MUST be preserved",
         "D01-5.1-row-1": "§5.1 Table 2 row 1: supported, >= threshold, resilient -> confident_supported -> act",
         "D01-5.1-row-2": "§5.1 Table 2 row 2: supported, >= threshold, not_checked -> un_probed_not_cleared -> halt",
@@ -69,20 +85,27 @@
         "D01-5.2-uncertainty-halts": "§5.2: un-probed adversarial state is not equivalent to resilient; uncertainty MUST halt (un_probed_not_cleared)",
         "D01-5.2-no-foreign-threshold": "§5.2: relying parties MUST NOT treat a receipt as conformant under a mapping with a different threshold than that mapping states",
         "D01-5.3-fail-closed": "§5.3: missing, malformed, expired, signature-invalid or unresolvable-mapping receipts MUST be treated as halt; implementations MUST NOT default to act",
-        "D01-6.2-stale-signature": "§6.2: a stale signature makes the receipt invalid; relying party MUST treat as halt",
+        "D01-6.1-reject-expired": "§6.1 Table 3, signature axis: the verifier MUST reject expired signatures (overlaps D01-4.3-7-time, D01-6.2-stale-signature, D01-9.2-replay and the 'expired' case of D01-5.3-fail-closed)",
+        "D01-6.2-stale-signature": "§6.2: a stale signature makes the receipt invalid; relying party MUST treat as halt (overlaps D01-6.1-reject-expired)",
         "D01-6.2-stale-calibration": "§6.2: stale calibration SHOULD be re-evaluated; issuers SHOULD publish recalibration cadence",
         "D01-6.2-stale-evidence": "§6.2: stale evidence SHOULD be re-evaluated and MUST NOT be honored as a gate signal for new actions",
         "D01-7.1-publish-anchors": "§7.1: verifier issuers MUST publish calibration anchors (the listed items)",
         "D01-7.1-harness": "§7.1: verifier issuers SHOULD publish a reference reproduction harness under a permissive license",
         "D01-7.2-cadence": "§7.2: issuers SHOULD publish a recalibration cadence; v_calibration.valid_until SHOULD reflect it",
         "D01-7.2-surface-stale": "§7.2: relying parties consuming receipts with stale calibration SHOULD log and surface the staleness rather than silently accept",
-        "D01-9.1-ordering-holds": "§9.1: the §3.2 ordering MUST hold when composed with environment.*",
+        "D01-9.1-ordering-holds": "§9.1: the §3.2 ordering MUST hold when composed with environment.* (overlaps D01-3.2-env-ordering)",
+        "D01-9.1-no-mask-env-halt": "§9.1: a verification.* ACT outcome MUST NOT mask an environment.* HALT outcome; an environment.* halt is final regardless of the verification.* state (overlaps D01-3.2-env-ordering, D01-9.1-ordering-holds)",
+        "D01-9.1-env-terminal-first": "§9.1: implementations MUST evaluate environment.* to its terminal state before evaluating any verification.* constraint, and a verification.* state SHALL NOT be reached if environment.* has already halted (overlaps D01-3.2-env-ordering)",
         "D01-9.2-key-rotation": "§9.2: issuers MUST rotate JWKS keys on a published cadence; RPs MUST honor key revocation lists where published",
         "D01-9.2-replay": "§9.2: RPs MUST verify iat and exp against current time",
         "D01-9.2-sample-harness": "§9.2 (confidence inflation): RPs SHOULD periodically sample receipts against the issuer's published harness",
         "D01-9.2-downgrade": "§9.2: a relying party MUST NOT accept a v0.3-spec receipt against a v0.4-spec gate",
-        "D01-9.2-mapping-tampering": "§9.2: receipts MUST bind to a content-addressed mapping; mapping documents MUST be hosted with a stable digest",
+        "D01-9.2-mapping-tampering": "§9.2: receipts MUST bind to a content-addressed mapping; mapping documents MUST be hosted with a stable, independently verifiable digest; verifier implementations MUST verify the fetched document's SHA-256 against v_gate_mapping_hash before use and a mismatch MUST halt (the same check as D01-4.3-2-mapping-digest)",
+        "D01-9.2-unverifiable-mapping-hash-malformed": "§9.2: a relying party that cannot independently verify the mapping document's hash MUST treat the receipt as malformed (overlaps the 'mapping ID cannot be resolved' case of D01-5.3-fail-closed and D01-4.3-2-mapping-digest)",
         "D01-10-well-known-jwks": "§10: verification issuers using HTTPS SHOULD publish their JWKS at /.well-known/jwks.json per RFC 7517 §4.7 conventions"
+      },
+      "requirement_notes": {
+        "D01-4.1-typ": "Finding 1 (Michael Msebenzi, review of b1da800): the v0.3 fixtures use typ application/vnd.verification.v0.3+composed+jws and the v0.4 fixtures (all 12 protected headers) use application/vnd.verification.v0.4+composed+jws; neither matches -01 §4.1 (verification-receipt+jws). No published checker asserts typ, so the requirement is not covered, and the corpus as shipped would not satisfy it."
       }
     },
     "RMT": {
@@ -798,9 +821,8 @@
               "assertion": "scope widening between hops rejected (delegation_chain_ref_scope_widening)"
             }
           ],
-          "notes": [
-            "no in-scope requirement: the decisive rule is third-party (delegation-chain-ref-v1 @16e140a)"
-          ]
+          "status": "deferred",
+          "reason": "no in-scope requirement: the decisive rule is third-party (delegation-chain-ref-v1 @16e140a). The published checker executes it (see external_requirements); the requirement text is outside this mapping's document set."
         },
         {
           "id": "comp-r06",
@@ -814,9 +836,8 @@
               "assertion": "hops[0].delegatee != hops[1].delegator rejected (delegation_chain_ref_chain_break)"
             }
           ],
-          "notes": [
-            "no in-scope requirement: the decisive rule is third-party (delegation-chain-ref-v1 @16e140a)"
-          ]
+          "status": "deferred",
+          "reason": "no in-scope requirement: the decisive rule is third-party (delegation-chain-ref-v1 @16e140a). The published checker executes it (see external_requirements); the requirement text is outside this mapping's document set."
         }
       ],
       "vector_count": 3
@@ -2020,6 +2041,8 @@
               "assertion": "not executed: check.mjs skips inputs carrying members_evaluated (service-level, not a derivation)"
             }
           ],
+          "status": "deferred",
+          "reason": "service-level rule (EXT-service-integrity-D1), not a format requirement in any in-scope text; conformance/check.mjs skips it. Declared, not run: no published checker executes this vector.",
           "notes": [
             "declared, not run: no published checker executes this vector"
           ]
@@ -2060,7 +2083,8 @@
   "totals": {
     "friday_priority": 58,
     "also_accounted": 10,
-    "mapped_or_deferred": 68
+    "mapped_or_deferred": 68,
+    "deferred": 4
   },
   "reverse_view": {
     "D01": {
@@ -2070,12 +2094,13 @@
         "rule2"
       ],
       "summary": {
-        "requirements": 53,
+        "requirements": 58,
         "covered": 10,
         "partial": 6,
-        "not_covered": 37,
+        "not_covered": 42,
         "not_covered_list": [
           "D01-3.2-env-ordering",
+          "D01-4.1-iana-alg",
           "D01-4.1-typ",
           "D01-4.2-v_verdict",
           "D01-4.2-v_confidence",
@@ -2098,6 +2123,7 @@
           "D01-5.1-table-shape",
           "D01-5.1-row-7",
           "D01-5.2-no-foreign-threshold",
+          "D01-6.1-reject-expired",
           "D01-6.2-stale-signature",
           "D01-6.2-stale-calibration",
           "D01-6.2-stale-evidence",
@@ -2106,11 +2132,76 @@
           "D01-7.2-cadence",
           "D01-7.2-surface-stale",
           "D01-9.1-ordering-holds",
+          "D01-9.1-no-mask-env-halt",
+          "D01-9.1-env-terminal-first",
           "D01-9.2-key-rotation",
           "D01-9.2-replay",
           "D01-9.2-sample-harness",
           "D01-9.2-downgrade",
           "D01-9.2-mapping-tampering",
+          "D01-9.2-unverifiable-mapping-hash-malformed",
+          "D01-10-well-known-jwks"
+        ]
+      },
+      "summary_excluding_not_normative": {
+        "corpora": [
+          "v0.3-composed",
+          "v0.4-composed"
+        ],
+        "requirements": 58,
+        "covered": 3,
+        "partial": 5,
+        "not_covered": 50,
+        "not_covered_list": [
+          "D01-3.2-env-ordering",
+          "D01-4.1-iana-alg",
+          "D01-4.1-typ",
+          "D01-4.2-v_verdict",
+          "D01-4.2-v_confidence",
+          "D01-4.2-v_adversarial_result",
+          "D01-4.2-v_recommendation",
+          "D01-4.2-v_gate",
+          "D01-4.2-v_gate_mapping",
+          "D01-4.2-v_gate_mapping_hash",
+          "D01-4.2-jwt-claims",
+          "D01-4.3-2-mapping-digest",
+          "D01-4.3-3-recompute-recommendation",
+          "D01-4.3-4-confirm-recommendation",
+          "D01-4.3-5-compute-gate",
+          "D01-4.3-6-confirm-gate",
+          "D01-4.3-7-time",
+          "D01-4.4-v_claim",
+          "D01-4.5-mapping-hash-present",
+          "D01-4.6-old-mapping-verifiable",
+          "D01-4.6-mapping-immutable",
+          "D01-5.1-table-shape",
+          "D01-5.1-row-1",
+          "D01-5.1-row-2",
+          "D01-5.1-row-3",
+          "D01-5.1-row-4",
+          "D01-5.1-row-5",
+          "D01-5.1-row-6",
+          "D01-5.1-row-7",
+          "D01-5.2-threshold-from-mapping",
+          "D01-5.2-uncertainty-halts",
+          "D01-5.2-no-foreign-threshold",
+          "D01-6.1-reject-expired",
+          "D01-6.2-stale-signature",
+          "D01-6.2-stale-calibration",
+          "D01-6.2-stale-evidence",
+          "D01-7.1-publish-anchors",
+          "D01-7.1-harness",
+          "D01-7.2-cadence",
+          "D01-7.2-surface-stale",
+          "D01-9.1-ordering-holds",
+          "D01-9.1-no-mask-env-halt",
+          "D01-9.1-env-terminal-first",
+          "D01-9.2-key-rotation",
+          "D01-9.2-replay",
+          "D01-9.2-sample-harness",
+          "D01-9.2-downgrade",
+          "D01-9.2-mapping-tampering",
+          "D01-9.2-unverifiable-mapping-hash-malformed",
           "D01-10-well-known-jwks"
         ]
       },
@@ -2118,6 +2209,7 @@
         "D01-3.2-conjunction": {
           "text": "§3.2: multiple verification.* constraints combine with AND; all MUST resolve to act for the action to proceed",
           "coverage": "covered",
+          "coverage_excluding_not_normative": "covered",
           "vectors": [
             {
               "corpus": "v0.3-composed",
@@ -2169,11 +2261,13 @@
         "D01-3.2-env-ordering": {
           "text": "§3.2: environment.* constraints MUST short-circuit before verification.* constraints",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.1-jws": {
           "text": "§4.1: receipts MUST be JWS; a relying party MUST accept compact and JSON (flattened) serializations",
           "coverage": "partial",
+          "coverage_excluding_not_normative": "partial",
           "vectors": [
             {
               "corpus": "v0.3-composed",
@@ -2220,6 +2314,7 @@
         "D01-4.1-alg": {
           "text": "§4.1: a conforming implementation MUST accept both EdDSA and ES256",
           "coverage": "partial",
+          "coverage_excluding_not_normative": "partial",
           "vectors": [
             {
               "corpus": "v0.3-composed",
@@ -2263,9 +2358,16 @@
             }
           ]
         },
+        "D01-4.1-iana-alg": {
+          "text": "§4.1: other algorithms are optional and SHOULD follow the IANA JOSE Algorithms registry (overlaps D01-4.1-alg: the accepted set is EdDSA and ES256 plus registry-listed options)",
+          "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
+          "vectors": []
+        },
         "D01-4.1-kid": {
           "text": "§4.1: kid MUST resolve to a key in the issuer's published JWKS",
           "coverage": "covered",
+          "coverage_excluding_not_normative": "covered",
           "vectors": [
             {
               "corpus": "v0.3-composed",
@@ -2312,51 +2414,62 @@
         "D01-4.1-typ": {
           "text": "§4.1: typ is verification-receipt+jws",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
+          "note": "Finding 1 (Michael Msebenzi, review of b1da800): the v0.3 fixtures use typ application/vnd.verification.v0.3+composed+jws and the v0.4 fixtures (all 12 protected headers) use application/vnd.verification.v0.4+composed+jws; neither matches -01 §4.1 (verification-receipt+jws). No published checker asserts typ, so the requirement is not covered, and the corpus as shipped would not satisfy it.",
           "vectors": []
         },
         "D01-4.2-v_verdict": {
           "text": "§4.2: v_verdict REQUIRED, one of supported | refuted | unverifiable | unknown",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.2-v_confidence": {
           "text": "§4.2: v_confidence REQUIRED, float in [0, 1]",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.2-v_adversarial_result": {
           "text": "§4.2: v_adversarial_result REQUIRED, one of resilient | vulnerable | not_checked",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.2-v_recommendation": {
           "text": "§4.2: v_recommendation REQUIRED, derived deterministically from the canonical input under the named mapping",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.2-v_gate": {
           "text": "§4.2: v_gate REQUIRED, act | halt, derived from v_recommendation under the named mapping",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.2-v_gate_mapping": {
           "text": "§4.2: v_gate_mapping REQUIRED; mapping documents are immutable after publication",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.2-v_gate_mapping_hash": {
           "text": "§4.2: v_gate_mapping_hash REQUIRED; absence is a malformed-receipt condition and MUST halt",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.2-jwt-claims": {
           "text": "§4.2: iss, iat, exp REQUIRED; sub RECOMMENDED; nbf OPTIONAL",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.3-sequence": {
           "text": "§4.3: a relying party MUST execute the eight-step sequence and treat any failure as malformed with gate decision halt",
           "coverage": "partial",
+          "coverage_excluding_not_normative": "partial",
           "vectors": [
             {
               "corpus": "v0.3-composed",
@@ -2403,6 +2516,7 @@
         "D01-4.3-1-signature": {
           "text": "§4.3 step 1: verify the JWS signature against the issuer's published JWKS",
           "coverage": "covered",
+          "coverage_excluding_not_normative": "covered",
           "vectors": [
             {
               "corpus": "v0.3-composed",
@@ -2454,36 +2568,43 @@
         "D01-4.3-2-mapping-digest": {
           "text": "§4.3 step 2: fetch the named mapping document; its SHA-256 MUST match v_gate_mapping_hash; receipts without the hash are malformed",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.3-3-recompute-recommendation": {
           "text": "§4.3 step 3: recompute candidate_recommendation from (v_verdict, v_confidence, v_adversarial_result) using the mapping's rules and threshold",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.3-4-confirm-recommendation": {
           "text": "§4.3 step 4: confirm candidate_recommendation == v_recommendation",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.3-5-compute-gate": {
           "text": "§4.3 step 5: compute candidate_gate = mapping(v_recommendation)",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.3-6-confirm-gate": {
           "text": "§4.3 step 6: confirm candidate_gate == v_gate",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.3-7-time": {
           "text": "§4.3 step 7: verify exp/nbf against current time subject to clock tolerance",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.3-8-mismatch-halts": {
           "text": "§4.3 step 8: any mismatch -> malformed; gate decision = halt",
           "coverage": "partial",
+          "coverage_excluding_not_normative": "partial",
           "vectors": [
             {
               "corpus": "v0.3-composed",
@@ -2500,31 +2621,37 @@
         "D01-4.4-v_claim": {
           "text": "§4.4: the verified claim MUST be bound via v_claim (text, or hash REQUIRED when text is omitted)",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.5-mapping-hash-present": {
           "text": "§4.5: v_gate_mapping_hash MUST be present in all conforming receipts",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.6-old-mapping-verifiable": {
           "text": "§4.6: a receipt issued under an older mapping MUST remain verifiable as correct under that mapping",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-4.6-mapping-immutable": {
-          "text": "§4.6: publishers MUST treat published mappings as immutable; new rules ship under new identifiers",
+          "text": "§4.6: publishers MUST treat published mappings as immutable; new rules ship under new identifiers; errata MAY be appended to a published mapping's metadata but the normative rule tables MUST NOT change after first publication",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-5.1-table-shape": {
           "text": "§5.1: the binary act/halt shape derived from the canonical recommendation MUST be preserved",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-5.1-row-1": {
           "text": "§5.1 Table 2 row 1: supported, >= threshold, resilient -> confident_supported -> act",
           "coverage": "covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": [
             {
               "corpus": "rule2",
@@ -2536,6 +2663,7 @@
         "D01-5.1-row-2": {
           "text": "§5.1 Table 2 row 2: supported, >= threshold, not_checked -> un_probed_not_cleared -> halt",
           "coverage": "covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": [
             {
               "corpus": "rule2",
@@ -2557,6 +2685,7 @@
         "D01-5.1-row-3": {
           "text": "§5.1 Table 2 row 3: supported, any, vulnerable -> vulnerable_supported -> halt",
           "coverage": "covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": [
             {
               "corpus": "rule2",
@@ -2568,6 +2697,7 @@
         "D01-5.1-row-4": {
           "text": "§5.1 Table 2 row 4: supported, < threshold, resilient or not_checked -> weak_supported -> halt",
           "coverage": "covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": [
             {
               "corpus": "rule2",
@@ -2579,6 +2709,7 @@
         "D01-5.1-row-5": {
           "text": "§5.1 Table 2 row 5: refuted -> refuted -> halt",
           "coverage": "covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": [
             {
               "corpus": "rule2",
@@ -2590,6 +2721,7 @@
         "D01-5.1-row-6": {
           "text": "§5.1 Table 2 row 6: unverifiable or unknown -> unverifiable -> halt",
           "coverage": "covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": [
             {
               "corpus": "rule2",
@@ -2601,11 +2733,13 @@
         "D01-5.1-row-7": {
           "text": "§5.1 Table 2 row 7: error condition -> error -> halt",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-5.2-threshold-from-mapping": {
           "text": "§5.2: the threshold is recovered from the named mapping; two receipts under one mapping ID MUST gate against the same threshold",
           "coverage": "partial",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": [
             {
               "corpus": "rule2",
@@ -2617,6 +2751,7 @@
         "D01-5.2-uncertainty-halts": {
           "text": "§5.2: un-probed adversarial state is not equivalent to resilient; uncertainty MUST halt (un_probed_not_cleared)",
           "coverage": "covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": [
             {
               "corpus": "rule2",
@@ -2633,11 +2768,13 @@
         "D01-5.2-no-foreign-threshold": {
           "text": "§5.2: relying parties MUST NOT treat a receipt as conformant under a mapping with a different threshold than that mapping states",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-5.3-fail-closed": {
           "text": "§5.3: missing, malformed, expired, signature-invalid or unresolvable-mapping receipts MUST be treated as halt; implementations MUST NOT default to act",
           "coverage": "partial",
+          "coverage_excluding_not_normative": "partial",
           "vectors": [
             {
               "corpus": "v0.3-composed",
@@ -2646,78 +2783,116 @@
             }
           ]
         },
-        "D01-6.2-stale-signature": {
-          "text": "§6.2: a stale signature makes the receipt invalid; relying party MUST treat as halt",
+        "D01-6.1-reject-expired": {
+          "text": "§6.1 Table 3, signature axis: the verifier MUST reject expired signatures (overlaps D01-4.3-7-time, D01-6.2-stale-signature, D01-9.2-replay and the 'expired' case of D01-5.3-fail-closed)",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
+          "vectors": []
+        },
+        "D01-6.2-stale-signature": {
+          "text": "§6.2: a stale signature makes the receipt invalid; relying party MUST treat as halt (overlaps D01-6.1-reject-expired)",
+          "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-6.2-stale-calibration": {
           "text": "§6.2: stale calibration SHOULD be re-evaluated; issuers SHOULD publish recalibration cadence",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-6.2-stale-evidence": {
           "text": "§6.2: stale evidence SHOULD be re-evaluated and MUST NOT be honored as a gate signal for new actions",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-7.1-publish-anchors": {
           "text": "§7.1: verifier issuers MUST publish calibration anchors (the listed items)",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-7.1-harness": {
           "text": "§7.1: verifier issuers SHOULD publish a reference reproduction harness under a permissive license",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-7.2-cadence": {
           "text": "§7.2: issuers SHOULD publish a recalibration cadence; v_calibration.valid_until SHOULD reflect it",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-7.2-surface-stale": {
           "text": "§7.2: relying parties consuming receipts with stale calibration SHOULD log and surface the staleness rather than silently accept",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-9.1-ordering-holds": {
-          "text": "§9.1: the §3.2 ordering MUST hold when composed with environment.*",
+          "text": "§9.1: the §3.2 ordering MUST hold when composed with environment.* (overlaps D01-3.2-env-ordering)",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
+          "vectors": []
+        },
+        "D01-9.1-no-mask-env-halt": {
+          "text": "§9.1: a verification.* ACT outcome MUST NOT mask an environment.* HALT outcome; an environment.* halt is final regardless of the verification.* state (overlaps D01-3.2-env-ordering, D01-9.1-ordering-holds)",
+          "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
+          "vectors": []
+        },
+        "D01-9.1-env-terminal-first": {
+          "text": "§9.1: implementations MUST evaluate environment.* to its terminal state before evaluating any verification.* constraint, and a verification.* state SHALL NOT be reached if environment.* has already halted (overlaps D01-3.2-env-ordering)",
+          "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-9.2-key-rotation": {
           "text": "§9.2: issuers MUST rotate JWKS keys on a published cadence; RPs MUST honor key revocation lists where published",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-9.2-replay": {
           "text": "§9.2: RPs MUST verify iat and exp against current time",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-9.2-sample-harness": {
           "text": "§9.2 (confidence inflation): RPs SHOULD periodically sample receipts against the issuer's published harness",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-9.2-downgrade": {
           "text": "§9.2: a relying party MUST NOT accept a v0.3-spec receipt against a v0.4-spec gate",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-9.2-mapping-tampering": {
-          "text": "§9.2: receipts MUST bind to a content-addressed mapping; mapping documents MUST be hosted with a stable digest",
+          "text": "§9.2: receipts MUST bind to a content-addressed mapping; mapping documents MUST be hosted with a stable, independently verifiable digest; verifier implementations MUST verify the fetched document's SHA-256 against v_gate_mapping_hash before use and a mismatch MUST halt (the same check as D01-4.3-2-mapping-digest)",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
+          "vectors": []
+        },
+        "D01-9.2-unverifiable-mapping-hash-malformed": {
+          "text": "§9.2: a relying party that cannot independently verify the mapping document's hash MUST treat the receipt as malformed (overlaps the 'mapping ID cannot be resolved' case of D01-5.3-fail-closed and D01-4.3-2-mapping-digest)",
+          "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         },
         "D01-10-well-known-jwks": {
           "text": "§10: verification issuers using HTTPS SHOULD publish their JWKS at /.well-known/jwks.json per RFC 7517 §4.7 conventions",
           "coverage": "not covered",
+          "coverage_excluding_not_normative": "not covered",
           "vectors": []
         }
       },
-      "note": "rule2 vectors count here but are labelled NOT NORMATIVE in their manifest; a reader wanting the normative-only view removes them"
+      "note": "two counts: summary counts every corpus including rule2, which its manifest labels NOT NORMATIVE; summary_excluding_not_normative and each row's coverage_excluding_not_normative count only the normative corpora"
     },
     "RMT": {
       "corpora": [
@@ -3481,5 +3656,537 @@
       },
       "note": "scoped to the evidence-pinning section only, as the fixture header pins it"
     }
+  },
+  "normative_audit": {
+    "document": "D01",
+    "source": "mappings/receipt-verify-registry/cited/draft-krausz-verification-state-01.txt",
+    "sections": [
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "9",
+      "10"
+    ],
+    "keywords": [
+      "MUST",
+      "MUST NOT",
+      "SHALL",
+      "SHALL NOT",
+      "SHOULD",
+      "SHOULD NOT",
+      "REQUIRED",
+      "RECOMMENDED"
+    ],
+    "rule": "every sentence carrying one of the keywords is listed with the requirement identifiers it is mapped to; exercised is true when at least one of those requirements has coverage covered or partial in the reverse view (all corpora), false when every one is not covered (unexercised)",
+    "summary": {
+      "sentences": 55,
+      "exercised": 10,
+      "unexercised": 45
+    },
+    "sentences": [
+      {
+        "n": 1,
+        "section": "3.2",
+        "text": "All constraints MUST resolve to act for the action to proceed.",
+        "requirements": [
+          "D01-3.2-conjunction"
+        ],
+        "exercised": true
+      },
+      {
+        "n": 2,
+        "section": "3.2",
+        "text": "Ordering with environment.*:* environment.* constraints MUST short- circuit before verification.* constraints per [ENV-STATE] §5.5.",
+        "requirements": [
+          "D01-3.2-env-ordering"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 3,
+        "section": "4.1",
+        "text": "Verification receipts MUST be issued as JSON Web Signatures (JWS) [RFC7515].",
+        "requirements": [
+          "D01-4.1-jws"
+        ],
+        "exercised": true
+      },
+      {
+        "n": 4,
+        "section": "4.1",
+        "text": "A relying party MUST accept both serializations.",
+        "requirements": [
+          "D01-4.1-jws"
+        ],
+        "exercised": true
+      },
+      {
+        "n": 5,
+        "section": "4.1",
+        "text": "alg: A conforming implementation MUST accept both EdDSA (Ed25519, [RFC8037]) and ES256 ([RFC7518]).",
+        "requirements": [
+          "D01-4.1-alg"
+        ],
+        "exercised": true
+      },
+      {
+        "n": 6,
+        "section": "4.1",
+        "text": "Other algorithms are optional and SHOULD follow the IANA JOSE Algorithms registry.",
+        "requirements": [
+          "D01-4.1-iana-alg"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 7,
+        "section": "4.1",
+        "text": "kid: MUST resolve to a key in the issuer's published JWKS [RFC7517] at /.well-known/jwks.json unless an alternate JWKS location is published in the issuer's metadata.",
+        "requirements": [
+          "D01-4.1-kid"
+        ],
+        "exercised": true
+      },
+      {
+        "n": 8,
+        "section": "4.2",
+        "text": "v_verdict (string, REQUIRED) --- One of supported, refuted, unverifiable, unknown.",
+        "requirements": [
+          "D01-4.2-v_verdict"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 9,
+        "section": "4.2",
+        "text": "v_confidence (number, REQUIRED) --- Float in [0, 1].",
+        "requirements": [
+          "D01-4.2-v_confidence"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 10,
+        "section": "4.2",
+        "text": "v_adversarial_result (string, REQUIRED) --- One of resilient, vulnerable, not_checked.",
+        "requirements": [
+          "D01-4.2-v_adversarial_result"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 11,
+        "section": "4.2",
+        "text": "v_recommendation (string, REQUIRED) --- One of confident_supported, vulnerable_supported, weak_supported, refuted, unverifiable, error.",
+        "requirements": [
+          "D01-4.2-v_recommendation"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 12,
+        "section": "4.2",
+        "text": "v_gate (string, REQUIRED) --- One of act, halt.",
+        "requirements": [
+          "D01-4.2-v_gate"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 13,
+        "section": "4.2",
+        "text": "v_gate_mapping (string, REQUIRED) --- Stable identifier of the published mapping document used at issuance (e.g., v0.3.0-2026-05-30).",
+        "requirements": [
+          "D01-4.2-v_gate_mapping"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 14,
+        "section": "4.2",
+        "text": "v_gate_mapping_hash (string, REQUIRED) --- SHA-256 hex digest of the canonical serialization of the mapping document identified by v_gate_mapping.",
+        "requirements": [
+          "D01-4.2-v_gate_mapping_hash"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 15,
+        "section": "4.2",
+        "text": "MUST be present in every receipt.",
+        "requirements": [
+          "D01-4.2-v_gate_mapping_hash",
+          "D01-4.5-mapping-hash-present"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 16,
+        "section": "4.2",
+        "text": "Receipts MUST bind to a content-addressed mapping; the absence of v_gate_mapping_hash is a malformed-receipt condition and MUST result in gate decision halt.",
+        "requirements": [
+          "D01-4.2-v_gate_mapping_hash",
+          "D01-9.2-mapping-tampering"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 17,
+        "section": "4.2",
+        "text": "iss (REQUIRED), sub (RECOMMENDED), iat (REQUIRED), exp (REQUIRED), nbf (OPTIONAL).",
+        "requirements": [
+          "D01-4.2-jwt-claims"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 18,
+        "section": "4.3",
+        "text": "A relying party verifying a receipt MUST execute the following sequence and treat any failure as a malformed receipt with gate decision halt:",
+        "requirements": [
+          "D01-4.3-sequence",
+          "D01-4.3-8-mismatch-halts"
+        ],
+        "exercised": true
+      },
+      {
+        "n": 19,
+        "section": "4.3",
+        "text": "MUST verify the SHA-256 digest of the fetched document matches v_gate_mapping_hash (hex-encoded).",
+        "requirements": [
+          "D01-4.3-2-mapping-digest"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 20,
+        "section": "4.4",
+        "text": "The verified claim MUST be bound to the receipt via v_claim:",
+        "requirements": [
+          "D01-4.4-v_claim"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 21,
+        "section": "4.4",
+        "text": "\"v_claim\": { \"text\": \"string (OPTIONAL when caller marks input as PII-sensitive)\", \"hash\": \"hex-encoded SHA-256 of canonicalized claim text (REQUIRED when text is omitted)\" }",
+        "requirements": [
+          "D01-4.4-v_claim"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 22,
+        "section": "4.5",
+        "text": "This field MUST be present in all conforming receipts; its absence is a malformed-receipt condition.",
+        "requirements": [
+          "D01-4.5-mapping-hash-present"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 23,
+        "section": "4.6",
+        "text": "MUST remain verifiable as _correct-under-v0.3.0_ after a newer mapping ships.",
+        "requirements": [
+          "D01-4.6-old-mapping-verifiable"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 24,
+        "section": "4.6",
+        "text": "Mapping document publishers MUST treat published mappings as immutable.",
+        "requirements": [
+          "D01-4.6-mapping-immutable"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 25,
+        "section": "4.6",
+        "text": "Errata (typographical corrections only) MAY be appended to a published mapping document's metadata, but the normative rule tables MUST NOT change after first publication.",
+        "requirements": [
+          "D01-4.6-mapping-immutable"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 26,
+        "section": "5.1",
+        "text": "Future mappings MAY tighten or extend this table; the structural shape (binary act/halt output derived from canonical recommendation) MUST be preserved.",
+        "requirements": [
+          "D01-5.1-table-shape"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 27,
+        "section": "5.2",
+        "text": "This ensures that the threshold is auditable, versioned, and consistent across all receipts issued under the same mapping: two receipts under the same mapping ID MUST gate against the same threshold; threshold changes require a new",
+        "requirements": [
+          "D01-5.2-threshold-from-mapping"
+        ],
+        "exercised": true
+      },
+      {
+        "n": 28,
+        "section": "5.2",
+        "text": "Per the fail- closed property, uncertainty MUST halt.",
+        "requirements": [
+          "D01-5.2-uncertainty-halts"
+        ],
+        "exercised": true
+      },
+      {
+        "n": 29,
+        "section": "5.2",
+        "text": "They MUST NOT treat a receipt as conformant under a mapping that specifies a different threshold than the one in that mapping document.",
+        "requirements": [
+          "D01-5.2-no-foreign-threshold"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 30,
+        "section": "5.3",
+        "text": "If a receipt is missing, malformed, expired, signature-invalid, or its mapping ID cannot be resolved, the relying party MUST treat the gate decision as halt.",
+        "requirements": [
+          "D01-5.3-fail-closed"
+        ],
+        "exercised": true
+      },
+      {
+        "n": 31,
+        "section": "5.3",
+        "text": "Implementations MUST NOT default to act under any error condition.",
+        "requirements": [
+          "D01-5.3-fail-closed"
+        ],
+        "exercised": true
+      },
+      {
+        "n": 32,
+        "section": "6.1",
+        "text": "Signature | exp | Key rotation; verifier MUST reject expired signatures",
+        "requirements": [
+          "D01-6.1-reject-expired"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 33,
+        "section": "6.2",
+        "text": "Stale signature* --- Receipt is invalid; relying party MUST treat as halt.",
+        "requirements": [
+          "D01-6.2-stale-signature"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 34,
+        "section": "6.2",
+        "text": "Stale calibration* --- Receipt SHOULD be re-evaluated; relying party MAY honor as soft-stale per its own policy.",
+        "requirements": [
+          "D01-6.2-stale-calibration"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 35,
+        "section": "6.2",
+        "text": "Verifier issuers SHOULD publish recalibration cadence in metadata.",
+        "requirements": [
+          "D01-6.2-stale-calibration",
+          "D01-7.2-cadence"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 36,
+        "section": "6.2",
+        "text": "Stale evidence* --- Receipt SHOULD be re-evaluated.",
+        "requirements": [
+          "D01-6.2-stale-evidence"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 37,
+        "section": "6.2",
+        "text": "MAY be honored for retrospective audit purposes (e.g., post-incident review of a past action) but MUST NOT be honored as a gate signal for new actions.",
+        "requirements": [
+          "D01-6.2-stale-evidence"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 38,
+        "section": "7.1",
+        "text": "Verifier issuers MUST publish:",
+        "requirements": [
+          "D01-7.1-publish-anchors"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 39,
+        "section": "7.1",
+        "text": "Verifier issuers SHOULD publish a reference reproduction harness under a permissive open-source license (Apache 2.0, MIT, or BSD).",
+        "requirements": [
+          "D01-7.1-harness"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 40,
+        "section": "7.2",
+        "text": "Verifier issuers SHOULD publish a recalibration cadence in the JWKS metadata or the verifier's well-known endpoint.",
+        "requirements": [
+          "D01-7.2-cadence"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 41,
+        "section": "7.2",
+        "text": "The v_calibration.valid_until field in receipts SHOULD reflect this cadence.",
+        "requirements": [
+          "D01-7.2-cadence"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 42,
+        "section": "7.2",
+        "text": "Relying parties consuming receipts with stale calibration SHOULD log and surface the staleness rather than silently accept.",
+        "requirements": [
+          "D01-7.2-surface-stale"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 43,
+        "section": "9.1",
+        "text": "When verification.* composes alongside environment.* on the same mandate, the ordering specified in §3.2 (environment.* short-circuits before verification.*) MUST hold.",
+        "requirements": [
+          "D01-9.1-ordering-holds"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 44,
+        "section": "9.1",
+        "text": "A verification.* ACT outcome MUST NOT mask an environment.* HALT outcome; if environment.* halts on any constraint, that halt is final regardless of the verification.* state.",
+        "requirements": [
+          "D01-9.1-no-mask-env-halt"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 45,
+        "section": "9.1",
+        "text": "Implementations MUST evaluate environment.* to its terminal state before evaluating any verification.* constraint, and a verification.* state SHALL NOT be reached if environment.* has already halted.",
+        "requirements": [
+          "D01-9.1-env-terminal-first"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 46,
+        "section": "9.2",
+        "text": "Key compromise.* Verifier issuers MUST rotate JWKS keys on a published cadence.",
+        "requirements": [
+          "D01-9.2-key-rotation"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 47,
+        "section": "9.2",
+        "text": "RPs MUST honor key revocation lists where published.",
+        "requirements": [
+          "D01-9.2-key-rotation"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 48,
+        "section": "9.2",
+        "text": "RPs MUST verify both against current time, subject to clock tolerance.",
+        "requirements": [
+          "D01-9.2-replay"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 49,
+        "section": "9.2",
+        "text": "RPs SHOULD periodically sample receipts against the issuer's published harness.",
+        "requirements": [
+          "D01-9.2-sample-harness"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 50,
+        "section": "9.2",
+        "text": "Downgrade attacks.* A future relying party MUST NOT accept a v0.3-spec receipt against a v0.4-spec gate.",
+        "requirements": [
+          "D01-9.2-downgrade"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 51,
+        "section": "9.2",
+        "text": "Mapping document tampering.* Receipts MUST bind to a content- addressed mapping via the v_gate_mapping_hash field (SHA-256).",
+        "requirements": [
+          "D01-9.2-mapping-tampering",
+          "D01-4.2-v_gate_mapping_hash"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 52,
+        "section": "9.2",
+        "text": "Mapping documents MUST be hosted such that the SHA-256 digest of the canonical serialization is stable and independently verifiable (e.g., at a content-addressed URL or via a git-tagged manifest).",
+        "requirements": [
+          "D01-9.2-mapping-tampering"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 53,
+        "section": "9.2",
+        "text": "Verifier implementations MUST verify the SHA-256 digest of the fetched mapping document against v_gate_mapping_hash before use; a digest mismatch MUST result in gate decision halt.",
+        "requirements": [
+          "D01-9.2-mapping-tampering",
+          "D01-4.3-2-mapping-digest"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 54,
+        "section": "9.2",
+        "text": "A relying party that cannot independently verify the mapping document's hash MUST treat the receipt as malformed.",
+        "requirements": [
+          "D01-9.2-unverifiable-mapping-hash-malformed"
+        ],
+        "exercised": false
+      },
+      {
+        "n": 55,
+        "section": "10",
+        "text": "Well-known URI:* Verification issuers using HTTPS SHOULD publish their JWKS at /.well-known/jwks.json per existing [RFC7517] Section 4.7 conventions.",
+        "requirements": [
+          "D01-10-well-known-jwks"
+        ],
+        "exercised": false
+      }
+    ]
   }
 }
