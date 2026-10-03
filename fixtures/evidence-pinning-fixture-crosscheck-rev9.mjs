@@ -12,7 +12,9 @@
 //               published as such; a vector naming one fails;
 //   Finding 50  the two contributed vectors (babyblueviper1, CC0) are present with
 //               their attribution, the mixed pair discriminates the two readings of
-//               the identity rule, and the roots they carry recompute.
+//               the identity rule, and the roots they carry recompute;
+//   Finding 51  among MALFORMED vectors, only the member-absent vector omits
+//               snippet_sha256 on an unpinned entry.
 //
 // Spec bases (both re-derived from TKCollective/agentoracle-receipt-spec):
 //   drafts/evidence-pinning-02-review-draft.md
@@ -254,7 +256,7 @@ if (process.argv[2] === "--check") {
     }
   }
 
-  // rev 9 Findings 47, 48, 50.
+  // rev 9 Findings 47, 48, 50, 51.
   {
     const byId = new Map(ref.vectors.map(v => [v.id, v]));
     const raises = (fn, arg) => { try { fn(arg); return false; } catch { return true; } };
@@ -271,6 +273,15 @@ if (process.argv[2] === "--check") {
     for (const id of ["evi-fully-pinned-fallback-derives-from-sources-accepted", "evi-root-present-pinned-count-absent-accepted",
                       "evi-unpinned-item-reason-content-not-held", "evi-unpinned-members-absent-accepted"]) {
       if (!byId.has(id)) fails.push(`${id}: one of the four regenerated fixtures is missing (rev 9 Finding 47)`);
+    }
+    // Finding 51: among MALFORMED vectors, only the member-absent vector omits the member on an unpinned entry.
+    for (const v of ref.vectors) {
+      if (v.designation !== "MALFORMED" || v.id === "evi-snippet-sha256-member-absent-on-unpinned-rejects") continue;
+      for (const e of entriesIn(v)) {
+        if (e.pinned === false && !Object.hasOwn(e, "snippet_sha256")) {
+          fails.push(`${v.id}: MALFORMED vector other than the member-absent one omits snippet_sha256 on an unpinned entry (rev 9 Finding 51)`);
+        }
+      }
     }
     // Finding 48: the negative vector.
     const neg = byId.get("evi-snippet-sha256-member-absent-on-unpinned-rejects");

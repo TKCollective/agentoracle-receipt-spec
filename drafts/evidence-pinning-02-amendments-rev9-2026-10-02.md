@@ -67,14 +67,30 @@ Two vectors contributed by babyblueviper1 under CC0 close it, with his stated ex
 `evi-pinned-unpinned-same-url-distinct-time-accepted` (accepted; step resolves `unknown`). See
 `fixtures/contrib/babyblueviper1-open-issue-3/NOTICE.md`.
 
+## Finding 51 — one MALFORMED vector gets the explicit null too
+
+`evi-full-resource-digest-on-unpinned-rejects` (MALFORMED, `resource_sha256_present_for_full_resource`)
+carried an unpinned entry that omitted `snippet_sha256`, as in rev 8. Under -03 Section 5.3.2 that
+omission is itself malformed, so a checker that reports every condition listed
+`snippet_sha256_member_absent` beside the condition the vector exists for. The entry now carries an
+explicit `"snippet_sha256": null`; nothing else in the vector changed apart from the Finding 49
+rename. After this, the only vector in the corpus that omits the member on an unpinned entry is the
+one that exists to omit it (Finding 48); the generator and the cross-check both fail the build
+otherwise.
+
+What this does not achieve, stated so it is not assumed: the vector still breaks two rules under
+-03, not one. Its purpose is the full-resource rule applied to an unpinned entry, which requires
+`content_kind: full_resource` on that entry, and -03 Section 5.3.2 names a non-null `content_kind`
+on an unpinned entry `content_kind_present_when_unpinned`. A checker that reports every condition
+lists that alongside `resource_sha256_present_for_full_resource`. The vector's named condition and
+its expected outcome (halt) are unchanged. Decided 2026-10-02 after the first rev 9 cut was reviewed
+and before rev 9 was published.
+
 ## What rev 9 does not do
 
 - It changes no other vector. Thirty-one of the forty-four rev 8 vectors are byte-identical in the
-  emitted set, nine differ only in their `condition` identifier, and four differ in the input as
-  described under Finding 47.
-- `evi-full-resource-digest-on-unpinned-rejects` still omits `snippet_sha256` on its unpinned entry,
-  as in rev 8. It is a MALFORMED vector and still halts; a report-all checker will list
-  `snippet_sha256_member_absent` alongside its named condition.
+  emitted set, eight differ only in their `condition` identifier, and five differ in the input: four
+  as described under Finding 47, and one under Finding 51 (that one also carries a Finding 49 rename).
 - It does not add vectors for the -03 registry conditions this corpus has never exercised:
   `evidence_set_not_object`, `evidence_set_version_absent_or_not_string`,
   `evidence_set_version_unsupported`, `fully_pinned_mismatch`, `sources_not_array`,

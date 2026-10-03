@@ -6,7 +6,7 @@ Forty-seven conformance vectors for the evidence-set step of
 `draft-krausz-verification-state-03` (Sections 5.3 and 5.4.1; filed text sha256
 `1d142b3effbfc612dca388567902f63823b45dcf69eece423e6b2b9a28dcbed9`). Rev 9 repairs the rev 8 corpus
 where it conflicted with the filed text; it does not change the specification. The changes are
-recorded as Findings 47–50 in `drafts/evidence-pinning-02-amendments-rev9-2026-10-02.md`.
+recorded as Findings 47–51 in `drafts/evidence-pinning-02-amendments-rev9-2026-10-02.md`.
 
 Rev 8 stays as published: its generator, cross-check, corpus and README are byte-unchanged.
 
@@ -28,8 +28,8 @@ Derived by diffing the two emitted files, not by reading the patch:
 | | count | vectors |
 |---|---|---|
 | Byte-identical to rev 8 | 31 | — |
-| `condition` identifier renamed, nothing else | 9 | see Finding 49 below |
-| Input regenerated with an explicit `"snippet_sha256": null` | 4 | see Finding 47 below |
+| `condition` identifier renamed, nothing else | 8 | see Finding 49 below |
+| Input regenerated with an explicit `"snippet_sha256": null` | 5 | four under Finding 47, one under Finding 51 (that one is also renamed under Finding 49) |
 | Added | 3 | see Findings 48 and 50 below |
 | Removed | 0 | — |
 
@@ -79,6 +79,17 @@ on a MALFORMED vector (the value his own `expect` string names) and the attribut
 (`contributed_by`, `license`, `source`); his checker's reported output is carried as
 `contributed_checker_result`. This closes the gap the rev 8 README recorded ("no vector covers it").
 
+**Finding 51 — explicit null on one MALFORMED vector.**
+`evi-full-resource-digest-on-unpinned-rejects` omitted `snippet_sha256` on its unpinned entry, as in
+rev 8, so a checker that reports every condition listed `snippet_sha256_member_absent` beside the
+vector's named condition. Its entry now carries `"snippet_sha256": null`. After this the only vector
+that omits the member on an unpinned entry is the one that exists to omit it (Finding 48), and the
+generator and the cross-check both fail the build otherwise. The vector still breaks two rules under
+-03, not one: testing the full-resource rule on an unpinned entry needs `content_kind:
+full_resource` on that entry, which -03 Section 5.3.2 names `content_kind_present_when_unpinned`. A
+report-all checker lists that beside `resource_sha256_present_for_full_resource`. The named
+condition and the expected outcome (halt) are unchanged.
+
 ## H1–H5 comparability
 
 The rev 8 run used five harness adaptations, stated in the header of `run_companion_corpus.py`.
@@ -99,7 +110,7 @@ Rev 9 is built so that the same five apply without edits:
   `contrib/babyblueviper1-open-issue-3/proposed_vectors_open_issue_3.json` beside it.
 - `evidence-pinning-fixture-crosscheck-rev9.mjs` — Node cross-check, same author. Recomputes every
   root and the census, re-derives the Finding 35–37 scope discrimination, rejects superseded
-  identifiers, and checks Findings 47, 48 and 50 on the shipped file. As in rev 8 it is **not a
+  identifiers, and checks Findings 47, 48, 50 and 51 on the shipped file. As in rev 8 it is **not a
   conformance verifier**: it does not evaluate whether a vector's input triggers its named condition
   in a real verifier, except where stated (the identity rule on the mixed pair; the member-absent
   entry really omitting the member).
@@ -136,7 +147,7 @@ python3 evidence-pinning-fixture-generator-rev9.py > evidence-pinning-fixtures-v
 node evidence-pinning-fixture-crosscheck-rev9.mjs --check evidence-pinning-fixtures-v2-rev9.json
 ```
 
-The first two lines print the same value, `a9010923e53a0734f78a8136a185efdf155880a903c747e8cff326abb473a738`.
+The first two lines print the same value, `c7d9456d1b5c28088b76ae6ca87716f777f1f62d53ecb94bd8c41b30239db32d`.
 Emission is deterministic across runs and byte-identical to the shipped file (`cmp`). The cross-check
 exits 0 and reports:
 
@@ -152,11 +163,11 @@ exits 0 and reports:
 
 | Artifact | sha256 |
 |---|---|
-| `evidence-pinning-fixtures-v2-rev9.json` (50,302 bytes, 1,295 lines) | `00a6996f1c223b67ad5ae10d15e68317230751a3a0c3db26a93d6a216518a404` |
-| `evidence-pinning-fixture-generator-rev9.py` | `c57289799d29e8bb5cc4df289e11731d472a79e3004d2b4a621a13d04ed58c60` |
-| `evidence-pinning-fixture-crosscheck-rev9.mjs` | `2ce3b0891e56c6d94dd60413b4e6b21261cf605454040f510b2bad765fe82bfb` |
+| `evidence-pinning-fixtures-v2-rev9.json` (50,336 bytes, 1,296 lines) | `275179b3ad832bb268d08fa23549082075be5e894708019dfcbb3d8504765e89` |
+| `evidence-pinning-fixture-generator-rev9.py` | `1264ab432ca4b52f01cf21c5d83dd15dd4c187c095ce21853d67aff2aad9d0cd` |
+| `evidence-pinning-fixture-crosscheck-rev9.mjs` | `f76ab869279247475fa9a9586159322a085790f7ce6925c781e58f02bf67c254` |
 | `contrib/babyblueviper1-open-issue-3/proposed_vectors_open_issue_3.json` | `cc41da97113cab3e65d0aff0ef492d7e2799d7e43a335b5099a911364a3b792c` |
-| `drafts/evidence-pinning-02-amendments-rev9-2026-10-02.md` | `a9010923e53a0734f78a8136a185efdf155880a903c747e8cff326abb473a738` |
+| `drafts/evidence-pinning-02-amendments-rev9-2026-10-02.md` | `c7d9456d1b5c28088b76ae6ca87716f777f1f62d53ecb94bd8c41b30239db32d` |
 
 ## The fail paths were exercised
 
@@ -172,13 +183,15 @@ Each mutation was applied to a copy of the shipped file and run through the cros
 | Give the mixed pair distinct `retrieved_at` | exit 1 — identity rule does not halt |
 | Strip the attribution from a contributed vector | exit 1 — attribution members missing or changed |
 | Set `header.census.malformed` to 21 by hand | exit 1 — file says 21, recomputed 22 |
+| Drop the explicit null from `evi-full-resource-digest-on-unpinned-rejects` | exit 1 — MALFORMED vector other than the member-absent one omits `snippet_sha256` (Finding 51) |
 | **None (shipped file)** | **exit 0, `all_agree: true`** |
 
 ## What is verified and what is not
 
 **Verified here (same-author tooling):** every root value and the census, recomputed by the Node
 cross-check; the four regenerated fixtures and every other non-MALFORMED vector carry an explicit
-null on unpinned entries; the member-absent vector omits the member and breaks no second rule; the
+null on unpinned entries; among MALFORMED vectors only the member-absent vector omits the member
+on an unpinned entry (Finding 51); the member-absent vector omits the member and breaks no second rule; the
 mixed pair halts under the whole-of-`sources` identity rule and not under a pinned-only reading; the
 roots the two contributed vectors carry recompute; rev 8's files are byte-unchanged.
 
@@ -202,9 +215,11 @@ printed `47/47 agree`. That is a local execution of his code by a party who wrot
   `source_entry_not_object`, `url_absent_or_not_string`, `snippet_sha256_present_when_unpinned`,
   `snippet_sha256_not_lowercase_hex64`, `content_kind_present_when_unpinned`,
   `resource_sha256_not_lowercase_hex64`, `member_contains_nul`.
-- `evi-full-resource-digest-on-unpinned-rejects` still omits `snippet_sha256` on its unpinned entry,
-  as in rev 8; it is a MALFORMED vector and a report-all checker lists
-  `snippet_sha256_member_absent` alongside its named condition.
+- That each MALFORMED vector triggers only its named condition. The cross-check does not evaluate
+  this. In the local run described above, two fragment vectors also reported
+  `evidence_root_absent_with_pinned_items`, and `evi-full-resource-digest-on-unpinned-rejects` also
+  reported `content_kind_present_when_unpinned` (Finding 51). `content_kind_present_when_unpinned` is therefore triggered by one vector but named
+  by none.
 - Verifier-side resolution logic for the `UNKNOWN`, `ADDITIVE`, `COMPLETENESS` and `RESOLUTION`
   vectors, and the separate signature-key resolution step of -03 Section 5.4.2, which this corpus
   does not cover.

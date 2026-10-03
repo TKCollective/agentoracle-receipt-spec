@@ -57,7 +57,7 @@
       "rev7_sha256": "6b13f6fc35d745c2642edcb52a2754f7cd43340ded3248b5d1ba70a431d6c037",
       "rev8_base_commit": "3d0ec0e82229c1336340f0323d54904e5baf38b2",
       "rev8_sha256": "6a1ca7844396055e4a2b76dd925cc623f0e530885c50b16f747b51e6a0aaecad",
-      "rev9_sha256": "a9010923e53a0734f78a8136a185efdf155880a903c747e8cff326abb473a738",
+      "rev9_sha256": "c7d9456d1b5c28088b76ae6ca87716f777f1f62d53ecb94bd8c41b30239db32d",
       "review_draft_and_rev3_head": "49b7d039576b17e39dd707c9f223de5670c9be86",
       "review_draft_sha256": "9832156998ceb35f25d08c5be2d4d7c314477b25045f4499e07f3c5e501f5096"
     },
@@ -519,6 +519,7 @@
           "pinned": false,
           "resource_sha256": "8ed3f6ad685b959ead7022518e1af76cd816f8e8ec7ccdda1ed4018e8f2223f8",
           "retrieved_at": "2026-09-01T12:00:00.000Z",
+          "snippet_sha256": null,
           "unpinned_reason": "no_content_returned",
           "url": "https://example.org/a"
         }

@@ -2,7 +2,7 @@
 # evidence-pinning fixture generator rev 9 — reference (Python)
 #
 # NEW FILENAME per semantics_change_new_filename.md. Against the rev 8 generator
-# this file (rev 9 Findings 47-50, drafts/evidence-pinning-02-amendments-rev9-2026-10-02.md):
+# this file (rev 9 Findings 47-51, drafts/evidence-pinning-02-amendments-rev9-2026-10-02.md):
 #   47  gives four positive fixtures an explicit `snippet_sha256: null` on their
 #       unpinned entry: draft-krausz-verification-state-03 Section 5.3.2 requires the
 #       member on every entry, superseding rev 6 Finding 30's omission-equivalence
@@ -11,7 +11,10 @@
 #   49  renames eight condition identifiers to the -03 registry and publishes the
 #       old ones as superseded;
 #   50  adds two vectors contributed by babyblueviper1 under CC0 for the mixed
-#       pinned/unpinned pair (fixtures/contrib/babyblueviper1-open-issue-3/).
+#       pinned/unpinned pair (fixtures/contrib/babyblueviper1-open-issue-3/);
+#   51  gives the MALFORMED vector evi-full-resource-digest-on-unpinned-rejects an
+#       explicit `snippet_sha256: null` on its unpinned entry, so the only vector
+#       that omits the member is the one that exists to omit it (Finding 48).
 # Rev 8 and rev 9 are not interchangeable: an implementation conformant to the
 # rev 8 corpus accepts the omission that rev 9's new vector requires it to halt on.
 # The rev 8 files stay on disk byte-unchanged. The first 44 vectors keep their rev 8
@@ -29,7 +32,7 @@
 #   drafts/evidence-pinning-02-amendments-rev8-2026-09-17.md
 #     sha256 6a1ca7844396055e4a2b76dd925cc623f0e530885c50b16f747b51e6a0aaecad
 #   drafts/evidence-pinning-02-amendments-rev9-2026-10-02.md
-#     sha256 a9010923e53a0734f78a8136a185efdf155880a903c747e8cff326abb473a738
+#     sha256 c7d9456d1b5c28088b76ae6ca87716f777f1f62d53ecb94bd8c41b30239db32d
 #   draft-krausz-verification-state-03 as filed (https://www.ietf.org/archive/id/draft-krausz-verification-state-03.txt)
 #     sha256 1d142b3effbfc612dca388567902f63823b45dcf69eece423e6b2b9a28dcbed9
 #   fixtures/contrib/babyblueviper1-open-issue-3/proposed_vectors_open_issue_3.json (CC0, babyblueviper1)
@@ -397,6 +400,9 @@ def make_vectors():
     out.append(dict(id="evi-full-resource-digest-on-unpinned-rejects", designation="MALFORMED", condition="resource_sha256_present_for_full_resource",
                     input=dict(entry=dict(url=URL_A, retrieved_at=TS_1, pinned=False,
                                           unpinned_reason="no_content_returned",
+                                          # rev 9 Finding 51: snippet_sha256 present and null, so this
+                                          # vector does not also report snippet_sha256_member_absent
+                                          snippet_sha256=None,
                                           content_kind="full_resource", resource_sha256=D_alpha)),
                     expect="halt, malformed; the two-state MUST (Finding 40) makes this entry's "
                            "pinned value determinate, so F19 sees it despite pinned being false"))
@@ -819,6 +825,16 @@ def assert_rev9(vectors):
         for e in _entries_of(v):
             if e.get("pinned") is False and ("snippet_sha256" not in e or e["snippet_sha256"] is not None):
                 fails.append(f"{v['id']}: unpinned entry without an explicit null snippet_sha256")
+    # Finding 51: among MALFORMED vectors, the member is omitted on an unpinned entry by the
+    # member-absent vector and by no other.
+    for v in vectors:
+        if v["designation"] != "MALFORMED" or v["id"] == "evi-snippet-sha256-member-absent-on-unpinned-rejects": continue
+        for e in _entries_of(v):
+            if e.get("pinned") is False and "snippet_sha256" not in e:
+                fails.append(f"{v['id']}: MALFORMED vector other than the member-absent one omits snippet_sha256 on an unpinned entry")
+    e51 = by_id["evi-full-resource-digest-on-unpinned-rejects"]["input"]["entry"]
+    if "snippet_sha256" not in e51 or e51["snippet_sha256"] is not None:
+        fails.append("evi-full-resource-digest-on-unpinned-rejects: no explicit null snippet_sha256")
     # Finding 48: the new vector's entry really omits the member, and nothing else is wrong with it.
     e = by_id["evi-snippet-sha256-member-absent-on-unpinned-rejects"]["input"]["entry"]
     if "snippet_sha256" in e: fails.append("member-absent vector carries the member")
@@ -1026,7 +1042,7 @@ def emit():
             rev6_sha256="d62ded37dcf63f541e5b670b0cc0f7876e04a182064eb06a32af0037effaf026",
             rev7_sha256="6b13f6fc35d745c2642edcb52a2754f7cd43340ded3248b5d1ba70a431d6c037",
             rev8_sha256="6a1ca7844396055e4a2b76dd925cc623f0e530885c50b16f747b51e6a0aaecad",
-            rev9_sha256="a9010923e53a0734f78a8136a185efdf155880a903c747e8cff326abb473a738",
+            rev9_sha256="c7d9456d1b5c28088b76ae6ca87716f777f1f62d53ecb94bd8c41b30239db32d",
             draft_03_filed_txt_sha256="1d142b3effbfc612dca388567902f63823b45dcf69eece423e6b2b9a28dcbed9",
             contributed_vectors_sha256=CONTRIB_SHA256,
             rev8_base_commit="3d0ec0e82229c1336340f0323d54904e5baf38b2",
