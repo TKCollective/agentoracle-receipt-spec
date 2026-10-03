@@ -147,7 +147,7 @@ python3 evidence-pinning-fixture-generator-rev9.py > evidence-pinning-fixtures-v
 node evidence-pinning-fixture-crosscheck-rev9.mjs --check evidence-pinning-fixtures-v2-rev9.json
 ```
 
-The first two lines print the same value, `c7d9456d1b5c28088b76ae6ca87716f777f1f62d53ecb94bd8c41b30239db32d`.
+The first two lines print the same value, `1b4be7f91cd76262e653e86d33828c796b21849474f6b66d7f14c8d6bf9d831c`.
 Emission is deterministic across runs and byte-identical to the shipped file (`cmp`). The cross-check
 exits 0 and reports:
 
@@ -163,11 +163,11 @@ exits 0 and reports:
 
 | Artifact | sha256 |
 |---|---|
-| `evidence-pinning-fixtures-v2-rev9.json` (50,336 bytes, 1,296 lines) | `275179b3ad832bb268d08fa23549082075be5e894708019dfcbb3d8504765e89` |
-| `evidence-pinning-fixture-generator-rev9.py` | `1264ab432ca4b52f01cf21c5d83dd15dd4c187c095ce21853d67aff2aad9d0cd` |
+| `evidence-pinning-fixtures-v2-rev9.json` (50,336 bytes, 1,296 lines) | `3c5f4bf42d5e60c4e424d9a301f1efbfdffba642f2f7b80b2cec1727e0873724` |
+| `evidence-pinning-fixture-generator-rev9.py` | `158d42204c37059868e9d22390a7412a805f3ea6d94b6651e25b27aea1be0608` |
 | `evidence-pinning-fixture-crosscheck-rev9.mjs` | `f76ab869279247475fa9a9586159322a085790f7ce6925c781e58f02bf67c254` |
 | `contrib/babyblueviper1-open-issue-3/proposed_vectors_open_issue_3.json` | `cc41da97113cab3e65d0aff0ef492d7e2799d7e43a335b5099a911364a3b792c` |
-| `drafts/evidence-pinning-02-amendments-rev9-2026-10-02.md` | `c7d9456d1b5c28088b76ae6ca87716f777f1f62d53ecb94bd8c41b30239db32d` |
+| `drafts/evidence-pinning-02-amendments-rev9-2026-10-02.md` | `1b4be7f91cd76262e653e86d33828c796b21849474f6b66d7f14c8d6bf9d831c` |
 
 ## The fail paths were exercised
 
@@ -209,7 +209,7 @@ printed `47/47 agree`. That is a local execution of his code by a party who wrot
   in -03 Section 10 stays open.
 - No independent from-text build of any revision of this corpus's tooling exists; the generator and
   the cross-check share an author (see the rev 8 README's independence disclosure, which still applies).
-- The -03 registry conditions this corpus has never exercised remain without vectors:
+- These -03 registry conditions are not named as a vector's condition in this corpus:
   `evidence_set_not_object`, `evidence_set_version_absent_or_not_string`,
   `evidence_set_version_unsupported`, `fully_pinned_mismatch`, `sources_not_array`,
   `source_entry_not_object`, `url_absent_or_not_string`, `snippet_sha256_present_when_unpinned`,
@@ -218,8 +218,8 @@ printed `47/47 agree`. That is a local execution of his code by a party who wrot
 - That each MALFORMED vector triggers only its named condition. The cross-check does not evaluate
   this. In the local run described above, two fragment vectors also reported
   `evidence_root_absent_with_pinned_items`, and `evi-full-resource-digest-on-unpinned-rejects` also
-  reported `content_kind_present_when_unpinned` (Finding 51). `content_kind_present_when_unpinned` is therefore triggered by one vector but named
-  by none.
+  reported `content_kind_present_when_unpinned` (Finding 51). `content_kind_present_when_unpinned` is
+  therefore triggered by one vector but named by none.
 - Verifier-side resolution logic for the `UNKNOWN`, `ADDITIVE`, `COMPLETENESS` and `RESOLUTION`
   vectors, and the separate signature-key resolution step of -03 Section 5.4.2, which this corpus
   does not cover.

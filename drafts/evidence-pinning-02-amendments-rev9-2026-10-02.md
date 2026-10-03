@@ -55,7 +55,8 @@ Section 5.4.1). They are renamed, and the old values are published as superseded
 
 These are the same eight renames babyblueviper1's H5 adaptation applied to the rev 8 names; under
 rev 9 that mapping has nothing left to rename. Nine vectors carry one of these identifiers; their
-inputs, designations and `expect` strings are unchanged.
+inputs, designations and `expect` strings are unchanged, except
+`evi-full-resource-digest-on-unpinned-rejects`, which also carries the explicit null of Finding 51.
 
 ## Finding 50 — the mixed pinned/unpinned pair has vectors
 
@@ -91,7 +92,9 @@ and before rev 9 was published.
 - It changes no other vector. Thirty-one of the forty-four rev 8 vectors are byte-identical in the
   emitted set, eight differ only in their `condition` identifier, and five differ in the input: four
   as described under Finding 47, and one under Finding 51 (that one also carries a Finding 49 rename).
-- It does not add vectors for the -03 registry conditions this corpus has never exercised:
+- It does not add vectors for the -03 registry conditions that are not named as a vector's
+  condition in this corpus (`content_kind_present_when_unpinned` is triggered by one vector, see
+  Finding 51, but named by none):
   `evidence_set_not_object`, `evidence_set_version_absent_or_not_string`,
   `evidence_set_version_unsupported`, `fully_pinned_mismatch`, `sources_not_array`,
   `source_entry_not_object`, `url_absent_or_not_string`, `snippet_sha256_present_when_unpinned`,

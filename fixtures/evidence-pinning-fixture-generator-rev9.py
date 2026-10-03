@@ -32,7 +32,7 @@
 #   drafts/evidence-pinning-02-amendments-rev8-2026-09-17.md
 #     sha256 6a1ca7844396055e4a2b76dd925cc623f0e530885c50b16f747b51e6a0aaecad
 #   drafts/evidence-pinning-02-amendments-rev9-2026-10-02.md
-#     sha256 c7d9456d1b5c28088b76ae6ca87716f777f1f62d53ecb94bd8c41b30239db32d
+#     sha256 1b4be7f91cd76262e653e86d33828c796b21849474f6b66d7f14c8d6bf9d831c
 #   draft-krausz-verification-state-03 as filed (https://www.ietf.org/archive/id/draft-krausz-verification-state-03.txt)
 #     sha256 1d142b3effbfc612dca388567902f63823b45dcf69eece423e6b2b9a28dcbed9
 #   fixtures/contrib/babyblueviper1-open-issue-3/proposed_vectors_open_issue_3.json (CC0, babyblueviper1)
@@ -1042,7 +1042,7 @@ def emit():
             rev6_sha256="d62ded37dcf63f541e5b670b0cc0f7876e04a182064eb06a32af0037effaf026",
             rev7_sha256="6b13f6fc35d745c2642edcb52a2754f7cd43340ded3248b5d1ba70a431d6c037",
             rev8_sha256="6a1ca7844396055e4a2b76dd925cc623f0e530885c50b16f747b51e6a0aaecad",
-            rev9_sha256="c7d9456d1b5c28088b76ae6ca87716f777f1f62d53ecb94bd8c41b30239db32d",
+            rev9_sha256="1b4be7f91cd76262e653e86d33828c796b21849474f6b66d7f14c8d6bf9d831c",
             draft_03_filed_txt_sha256="1d142b3effbfc612dca388567902f63823b45dcf69eece423e6b2b9a28dcbed9",
             contributed_vectors_sha256=CONTRIB_SHA256,
             rev8_base_commit="3d0ec0e82229c1336340f0323d54904e5baf38b2",
